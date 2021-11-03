@@ -5,8 +5,9 @@ const readline = require('readline');
 const videoItems = require('./output/videoItems.json');
 const videoBasePath = './output/videos';
 
-const startIndex = 5;
-const endIndex = videoItems.length - 1;
+const startIndex = 0;
+// const endIndex = videoItems.length - 1;
+const endIndex = 36;
 const maxThread = 30;
 const videoStatus = {};
 let downloadedVideos = {};
@@ -31,6 +32,8 @@ async function main() {
     setInterval(async () => {
         if (downloadedVideos[currentIndex]) {
             currentIndex++;
+            console.log("Skip:", currentIndex)
+            return;
         }
         if (currentIndex > endIndex && runningThread <= 0) {
             const error = {};
@@ -49,7 +52,7 @@ async function main() {
             process.exit();
         }
 
-        if (runningThread < maxThread) {
+        if (runningThread < maxThread && currentIndex <= endIndex) {
             const index = currentIndex;
             try {
                 currentIndex++;
@@ -73,14 +76,26 @@ async function main() {
     }, 1000);
 
     setInterval(() => {
+        if(runningThread <= 0){
+            return;
+        }
+
         let lineCount = 0;
         Object.keys(videoStatus).forEach(key => {
             if (videoStatus[key].status === 'running') {
                 lineCount++;
-                console.log(`Index: ${key} - Name: ${videoItems[key].title} - Status: ${videoStatus[key].description}`)
+                console.log(`Index: ${key} - Name: ${videoItems[key].title} - Status: ${videoStatus[key].description} ${' '.repeat(10)}`)
+            } else if (videoStatus[key].status === 'error') {
+                lineCount++;
+                console.log(`Index: ${key} - Name: ${videoItems[key].title} - Status: Error ${' '.repeat(20)}`)
             }
         })
-        readline.moveCursor(process.stdout, 0, -lineCount);
+        if(lineCount < maxThread){
+            const blankLine = maxThread -lineCount + 1;
+            const blank = "\n".repeat(blankLine);
+            console.log(blank)
+        }
+        readline.moveCursor(process.stdout, 0, -maxThread);
     }, 1000);
 }
 
@@ -91,7 +106,7 @@ function downloadVideo(index) {
         const video = ytdl(link, {
             quality: 'highestaudio',
         });
-        const outputPath = `./output/videos/${videoItem.title}.mp4`;
+        const outputPath = `./output/tmp/${videoItem.title}.mp4`;
         video.pipe(fs.createWriteStream(outputPath));
 
         video.on('progress', (chunkLength, downloaded, total) => {
@@ -100,12 +115,17 @@ function downloadVideo(index) {
             videoStatus[index].description = `${percent}% downloaded (${toMb(downloaded)}MB of ${toMb(total)}MB)`;
         });
         video.on('end', () => {
-            videoStatus[index].status = 'finished';
+            fs.copyFile(outputPath,`${videoBasePath}/${videoItem.title}.mp4`,(err)=>{
+                if(err){
+                    console.log("Mv error",err);
+                    return;
+                }
+                resolve();
+            })
         });
         video.on('error', (err) => {
-            console.log("Download error", err)
             fs.rmSync(outputPath);
-            videoStatus[index].status = 'error';
+            reject(err);
         })
     });
 
