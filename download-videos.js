@@ -27,7 +27,7 @@ function loadVideoState() {
 async function main() {
     try {
         videoState = loadVideoState();
-        endIndex = videoState.length;
+        endIndex = videoState.length - 1;
         totalVideoCount = endIndex - startIndex + 1;
     } catch (err) {
         console.log("Video state not found. Please run command `list-videos-of-playlist`");
@@ -123,7 +123,7 @@ function renderStatus(clearOutStatus = true) {
         readline.clearScreenDown(process.stdout);
     }
 
-    console.log(`Current: ${startIndex} - Start: ${currentIndex} - End: ${endIndex} - Thread: ${runningThread}/${maxThread}`);
+    console.log(`Current: ${currentIndex} - Start: ${startIndex} - End: ${endIndex} - Thread: ${runningThread}/${maxThread}`);
     console.log(`Total: ${totalVideoCount} - Download: ${downloadVideoCount} - Error: ${errorVideoCount} - Exist: ${existVideoCount}`);
 
     let lineCount = 0;

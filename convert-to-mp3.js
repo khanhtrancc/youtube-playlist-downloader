@@ -28,7 +28,7 @@ function loadVideoState() {
 async function main() {
     try {
         videoState = loadVideoState();
-        endIndex = videoState.length;
+        endIndex = videoState.length - 1;
         totalVideoCount = endIndex - startIndex + 1;
     } catch (err) {
         console.log("Video state not found. Please run command `list-videos-of-playlist`");
@@ -45,12 +45,20 @@ async function main() {
             return;
         }
 
+        // Current video has NOT been downloaded
+        if (!videoState[currentIndex].isDownloaded) {
+            currentIndex++;
+            errorVideoCount++;
+            return;
+        }
+
         // Current video has been convert
         if (videoState[currentIndex].isConverted) {
             currentIndex++;
             existVideoCount++;
             return;
         }
+
 
         if (runningThread < maxThread) {
             const index = currentIndex;
@@ -63,6 +71,7 @@ async function main() {
                 videoState[index].isConverted = true;
                 convertVideoCount++;
             } catch (err) {
+                console.log(err)
                 errorVideoCount++;
                 videoState[index].status = 'error';
                 videoState[index].description = 'Error: ' + err;
@@ -90,11 +99,11 @@ function convertToMp3(i) {
         try {
             const command = ffmpeg(`${config.videoPath}/${videoState[i].title}.mp4`);
             command.audioBitrate(128)
-                .save(`${config.audioPath}/${i}-${videoItems[i].title}.mp3`)
+                .save(`${config.audioPath}/${i}-${videoState[i].title}.mp3`)
                 .on('end', () => {
                     resolve();
                 })
-                .on('error',(err)=>{
+                .on('error', (err) => {
                     reject(err);
                 });
         } catch (err) {
@@ -110,7 +119,7 @@ function renderStatus(clearOutStatus = true) {
         readline.clearScreenDown(process.stdout);
     }
 
-    console.log(`Current: ${startIndex} - Start: ${currentIndex} - End: ${endIndex} - Thread: ${runningThread}/${maxThread}`);
+    console.log(`Current: ${currentIndex} - Start: ${startIndex} - End: ${endIndex} - Thread: ${runningThread}/${maxThread}`);
     console.log(`Total: ${totalVideoCount} - Convert: ${convertVideoCount} - Error: ${errorVideoCount} - Exist: ${existVideoCount}`);
 
     let lineCount = 0;
