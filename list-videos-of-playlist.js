@@ -31,9 +31,9 @@ function existState() {
 }
 
 async function main() {
-    try{
+    try {
         await existState();
-    } catch(error){
+    } catch (error) {
         process.exit();
     }
 
@@ -81,6 +81,7 @@ async function main() {
 
     fs.writeFileSync(outputPath, JSON.stringify(videoIds));
     console.log("List of videos has saved to ", outputPath);
+    console.log("Please check and rename videos in ", outputPath, " if need.")
 }
 
 

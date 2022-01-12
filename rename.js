@@ -53,7 +53,7 @@ async function main() {
         }
 
         // Current video has been convert
-        if (videoState[currentIndex].isConverted) {
+        if (videoState[currentIndex].isRenamed) {
             currentIndex++;
             existVideoCount++;
             return;
@@ -65,10 +65,10 @@ async function main() {
             currentIndex++;
             runningThread++;
             try {
-                videoState[index].status = 'converting';
+                videoState[index].status = 'renaming';
                 await convertToMp3(index);
-                videoState[index].status = 'converted';
-                videoState[index].isConverted = true;
+                videoState[index].status = 'renamed';
+                videoState[index].isRenamed = true;
                 convertVideoCount++;
             } catch (err) {
                 console.log(err)
@@ -97,15 +97,16 @@ async function main() {
 function convertToMp3(i) {
     return new Promise((resolve, reject) => {
         try {
-            const command = ffmpeg(`${config.videoPath}/${videoState[i].title}.mp4`);
-            command.audioBitrate(128)
-                .save(`${config.audioPath}/${`000${i}`.slice(-5)}-${videoState[i].title}.mp3`)
-                .on('end', () => {
-                    resolve();
-                })
-                .on('error', (err) => {
+            const oldPath = `${config.audioPath}/${i}-${videoState[i].title}.mp3`;
+            const newPath = `${config.audioPath}/mp3/${`0000${i}`.slice(-5)}-${videoState[i].mp3_file}.mp3`;
+            fs.copyFile(oldPath, newPath, (err) => {
+                if (err) {
                     reject(err);
-                });
+                    return;
+                }
+                resolve();
+            });
+
         } catch (err) {
             reject(err);
         }
@@ -124,7 +125,7 @@ function renderStatus(clearOutStatus = true) {
 
     let lineCount = 0;
     Object.keys(videoState).forEach(key => {
-        if (videoState[key].status === 'converting') {
+        if (videoState[key].status === 'renaming') {
             lineCount++;
             console.log(`Index: ${key} - Name: ${videoState[key].title} - Status: ${videoState[key].description}`)
         }
