@@ -122,7 +122,7 @@ async function main() {
         }
       });
     }
-  }, 1000);
+  }, 100);
 
   renderStatus(false);
 
