@@ -69,7 +69,9 @@ async function main() {
 
   try {
     videoState = loadVideoState();
-    endIndex = videoState.length - 1;
+    if (endIndex <= 0) {
+      endIndex = videoState.length - 1;
+    }
     totalVideoCount = endIndex - startIndex + 1;
   } catch (err) {
     console.log(
@@ -164,7 +166,7 @@ function renderStatus(clearOutStatus = true) {
   const maxLineCount = maxThread + 2;
   if (clearOutStatus) {
     // // readline.moveCursor(process.stdout, 0, -maxLineCount);
-    readline.cursorTo(process.stdout,0,0);
+    readline.cursorTo(process.stdout, 0, 0);
     readline.clearScreenDown(process.stdout);
   }
 

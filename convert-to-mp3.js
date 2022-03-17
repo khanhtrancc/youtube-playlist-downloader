@@ -105,6 +105,7 @@ async function main() {
       runningThread++;
       try {
         videoState[index].status = "converting";
+        videoState[index].description = "Start convert to mp3";
         await convertToMp3(index);
         videoState[index].status = "converted";
         videoState[index].isConverted = true;
@@ -136,12 +137,16 @@ function convertToMp3(i) {
     try {
       const command = ffmpeg(`${config.videoPath}/${i}.mp4`);
       command
+        .audioFilters(`atempo=1.0`)
         .audioBitrate(128)
         .save(
           `${config.audioPath}/${`000${i}`.slice(-5)}-${
             videoState[i].title
           }.mp3`
         )
+        .on('progress', function(progress) {
+          videoState[i].description = progress?.timemark || 'Converting';
+        })
         .on("end", () => {
           resolve();
         })
@@ -157,7 +162,7 @@ function convertToMp3(i) {
 function renderStatus(clearOutStatus = true) {
   const maxLineCount = maxThread + 2;
   if (clearOutStatus) {
-    readline.moveCursor(process.stdout, 0, -maxLineCount);
+    readline.cursorTo(process.stdout, 0, 0);
     readline.clearScreenDown(process.stdout);
   }
 
