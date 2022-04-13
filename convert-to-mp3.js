@@ -75,6 +75,11 @@ async function main() {
     process.exit();
   }
 
+  let shortName = "";
+  process.env.PLAYLIST_NAME.split(" ").map((item) => {
+    shortName += (item[0] || '').toUpperCase();
+  });
+
   setInterval(async () => {
     if (currentIndex > endIndex) {
       // All convert finish?
@@ -106,7 +111,7 @@ async function main() {
       try {
         videoState[index].status = "converting";
         videoState[index].description = "Start convert to mp3";
-        await convertToMp3(index);
+        await convertToMp3(index, shortName);
         videoState[index].status = "converted";
         videoState[index].isConverted = true;
         convertVideoCount++;
@@ -132,7 +137,7 @@ async function main() {
   }, 1000);
 }
 
-function convertToMp3(i) {
+function convertToMp3(i, shortName) {
   return new Promise((resolve, reject) => {
     try {
       const command = ffmpeg(`${config.videoPath}/${i}.mp4`);
@@ -140,12 +145,12 @@ function convertToMp3(i) {
         .audioFilters(`atempo=1.0`)
         .audioBitrate(128)
         .save(
-          `${config.audioPath}/${`000${i}`.slice(-5)}-${
+          `${config.audioPath}/${shortName}-${`000${i}`.slice(-3)}-${
             videoState[i].title
           }.mp3`
         )
-        .on('progress', function(progress) {
-          videoState[i].description = progress?.timemark || 'Converting';
+        .on("progress", function (progress) {
+          videoState[i].description = progress?.timemark || "Converting";
         })
         .on("end", () => {
           resolve();
