@@ -138,7 +138,8 @@ async function main() {
       });
     };
 
-    if (Object.keys(retryDownloadList).length > 0) {
+    const needRetryVideo = Object.keys(retryDownloadList).length;
+    if (needRetryVideo > 0) {
       if (runningThread < maxThread) {
         const now = Date.now();
         const retryIndex = Object.keys(retryDownloadList)
@@ -146,16 +147,20 @@ async function main() {
           .find((index) => {
             return (
               retryDownloadList[index] &&
-              retryDownloadList[index].lastTime < now - timeBetweenRetry &&
+              retryDownloadList[index].lastTime <= now - timeBetweenRetry &&
               !retryDownloadList[index].hide
             );
           });
-        if (retryIndex > 0) {
+        if (retryIndex >= 0) {
           const index = retryIndex;
           await downloadAndUpdateVideoState(index);
+          return;
         }
       }
-      return;
+
+      if (maxThread - runningThread < needRetryVideo + 3) {
+        return;
+      }
     }
 
     if (currentIndex > endIndex) {
@@ -277,14 +282,16 @@ function renderStatus(clearOutStatus = true) {
   let isShowRetry = false;
   Object.keys(retryDownloadList).forEach((retryIndex) => {
     let data = retryDownloadList[retryIndex];
-    if (!data || data.hide) {
+    if (!data) {
       return;
     }
     const key = data.index;
     console.log(
       `Retry: ${key} - Name: ${videoState[key].title} - Retry in: ${
-        (timeBetweenRetry - (Date.now() - data.lastTime)) / 1000
-      }s - Count: ${data.count}/${maxRetryCount}`
+        !data.hide
+          ? `${(timeBetweenRetry - (Date.now() - data.lastTime)) / 1000}s`
+          : "now"
+      } - Count: ${data.count}/${maxRetryCount}`
     );
     isShowRetry = true;
   });
