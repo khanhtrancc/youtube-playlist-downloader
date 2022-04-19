@@ -22,10 +22,12 @@ let maxThread = 3;
 let totalVideoCount;
 let existVideoCount = 0;
 let downloadVideoCount = 0;
-let errorVideoCount = 0;
+let errorVideoIndexList = [];
 
 let currentIndex;
 let runningThread = 0;
+let preventDownloadNewVideo = false;
+let lastCommand = "None";
 
 function getArgs() {
   const parser = new ArgumentParser({
@@ -79,8 +81,47 @@ async function main() {
     );
     process.exit();
   }
+  videoState.forEach((item) => {
+    if (item.status === "downloading") {
+      delete item.status;
+    }
+    delete item.description;
+  });
 
   setInterval(async () => {
+    if (preventDownloadNewVideo) {
+      return;
+    }
+    const downloadAndUpdateVideoState = async (index) => {
+      runningThread++;
+      try {
+        videoState[index].status = "downloading";
+        await downloadVideo(index);
+        videoState[index].status = "downloaded";
+        videoState[index].isDownloaded = true;
+        downloadVideoCount++;
+      } catch (err) {
+        errorVideoIndexList.push(index);
+        errorVideoIndexList = errorVideoIndexList.sort((a, b) => a - b);
+        videoState[index].status = "error";
+        videoState[index].description = "Error: " + err;
+      }
+      runningThread--;
+      fs.writeFile(config.videoStatePath, JSON.stringify(videoState), (err) => {
+        if (err) {
+          console.log("Write download file error", err);
+        }
+      });
+    };
+
+    if (errorVideoIndexList.length > 0) {
+      if (runningThread < maxThread) {
+        const index = errorVideoIndexList.shift();
+        await downloadAndUpdateVideoState(index);
+      }
+      return;
+    }
+
     if (currentIndex > endIndex) {
       // All download finish?
       if (runningThread <= 0) {
@@ -98,26 +139,9 @@ async function main() {
     }
 
     if (runningThread < maxThread) {
-      const index = currentIndex;
+      index = currentIndex;
       currentIndex++;
-      runningThread++;
-      try {
-        videoState[index].status = "downloading";
-        await downloadVideo(index);
-        videoState[index].status = "downloaded";
-        videoState[index].isDownloaded = true;
-        downloadVideoCount++;
-      } catch (err) {
-        errorVideoCount++;
-        videoState[index].status = "error";
-        videoState[index].description = "Error: " + err;
-      }
-      runningThread--;
-      fs.writeFile(config.videoStatePath, JSON.stringify(videoState), (err) => {
-        if (err) {
-          console.log("Write download file error", err);
-        }
-      });
+      await downloadAndUpdateVideoState(index);
     }
   }, 100);
 
@@ -126,6 +150,27 @@ async function main() {
   setInterval(() => {
     renderStatus();
   }, 1000);
+
+  handleRealtimeCommand();
+}
+
+function handleRealtimeCommand() {
+  const stdin = process.stdin;
+
+  stdin.setRawMode(true);
+  stdin.setEncoding("utf8");
+  stdin.resume();
+
+  stdin.on("data", (key) => {
+    lastCommand = key;
+    if (key === "c") {
+      process.exit();
+    } else if (key === "x") {
+      preventDownloadNewVideo = true;
+    } else if (key === "n") {
+      preventDownloadNewVideo = false;
+    }
+  });
 }
 
 function downloadVideo(index) {
@@ -163,19 +208,22 @@ function downloadVideo(index) {
 }
 
 function renderStatus(clearOutStatus = true) {
-  const maxLineCount = maxThread + 2;
   if (clearOutStatus) {
-    // // readline.moveCursor(process.stdout, 0, -maxLineCount);
     readline.cursorTo(process.stdout, 0, 0);
     readline.clearScreenDown(process.stdout);
   }
 
   console.log(
+    utils.consoleColor.FgCyan,
     `Current: ${currentIndex} - Start: ${startIndex} - End: ${endIndex} - Thread: ${runningThread}/${maxThread}`
   );
   console.log(
-    `Total: ${totalVideoCount} - Download: ${downloadVideoCount} - Error: ${errorVideoCount} - Exist: ${existVideoCount}`
+    `Total: ${totalVideoCount} - Download: ${downloadVideoCount} - Exist: ${existVideoCount} - Error: ${JSON.stringify(
+      errorVideoIndexList
+    )} `
   );
+  console.log("Download new videos: ", !preventDownloadNewVideo);
+  console.log(utils.consoleColor.Reset);
 
   let lineCount = 0;
   Object.keys(videoState).forEach((key) => {
@@ -186,11 +234,17 @@ function renderStatus(clearOutStatus = true) {
       );
     }
   });
-  if (lineCount < maxThread - 1) {
-    const blankLine = maxThread - lineCount - 1;
-    const blank = " \n".repeat(blankLine);
-    console.log(blank);
-  }
+
+  console.log(
+    utils.consoleColor.FgCyan,
+    `\nCommand:
+  - x: Stop downloading new videos
+  - n: Resume downloading new videos
+  - c: Force exit
+  
+  => Last command: ${lastCommand}
+  `
+  );
 }
 
 main();
