@@ -233,8 +233,10 @@ function downloadVideo(index) {
     });
     video.on("end", () => {
       fs.copyFile(tmpOutputPath, `${config.videoPath}/${index}.mp4`, (err) => {
-        if (err) {
+        try {
           fs.rmSync(tmpOutputPath);
+        } catch (err) {}
+        if (err) {
           reject(err);
           return;
         }
@@ -243,7 +245,9 @@ function downloadVideo(index) {
     });
     video.on("error", (err) => {
       if (fs.existsSync(tmpOutputPath)) {
-        fs.rmSync(tmpOutputPath);
+        try {
+          fs.rmSync(tmpOutputPath);
+        } catch (err) {}
       }
       reject(err);
     });
