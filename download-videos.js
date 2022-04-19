@@ -18,11 +18,14 @@ let videoState;
 let startIndex = 0;
 let endIndex = 0;
 let maxThread = 3;
+const maxRetryCount = 10;
+const timeBetweenRetry = 5000;
 
 let totalVideoCount;
 let existVideoCount = 0;
 let downloadVideoCount = 0;
-let errorVideoIndexList = [];
+let errorVideoIndexList = {};
+let retryDownloadList = {};
 
 let currentIndex;
 let runningThread = 0;
@@ -79,6 +82,7 @@ async function main() {
     console.log(
       "Video state not found. Please run command `list-videos-of-playlist`"
     );
+    console.log(err);
     process.exit();
   }
   videoState.forEach((item) => {
@@ -95,14 +99,34 @@ async function main() {
     const downloadAndUpdateVideoState = async (index) => {
       runningThread++;
       try {
+        if (retryDownloadList[index]) {
+          retryDownloadList[index].hide = true;
+        }
         videoState[index].status = "downloading";
         await downloadVideo(index);
         videoState[index].status = "downloaded";
         videoState[index].isDownloaded = true;
         downloadVideoCount++;
       } catch (err) {
-        errorVideoIndexList.push(index);
-        errorVideoIndexList = errorVideoIndexList.sort((a, b) => a - b);
+        if (!errorVideoIndexList[index]) {
+          if (retryDownloadList[index]) {
+            if (retryDownloadList[index].count > maxRetryCount) {
+              delete retryDownloadList[index];
+              errorVideoIndexList[index] = videoState[index].description;
+            } else {
+              retryDownloadList[index].count++;
+              retryDownloadList[index].lastTime = Date.now();
+              retryDownloadList[index].hide = false;
+            }
+          } else {
+            retryDownloadList[index] = {
+              index,
+              count: 1,
+              lastTime: Date.now(),
+              hide: false,
+            };
+          }
+        }
         videoState[index].status = "error";
         videoState[index].description = "Error: " + err;
       }
@@ -114,10 +138,22 @@ async function main() {
       });
     };
 
-    if (errorVideoIndexList.length > 0) {
+    if (Object.keys(retryDownloadList).length > 0) {
       if (runningThread < maxThread) {
-        const index = errorVideoIndexList.shift();
-        await downloadAndUpdateVideoState(index);
+        const now = Date.now();
+        const retryIndex = Object.keys(retryDownloadList)
+          .sort((a, b) => a - b)
+          .find((index) => {
+            return (
+              retryDownloadList[index] &&
+              retryDownloadList[index].lastTime < now - timeBetweenRetry &&
+              !retryDownloadList[index].hide
+            );
+          });
+        if (retryIndex > 0) {
+          const index = retryIndex;
+          await downloadAndUpdateVideoState(index);
+        }
       }
       return;
     }
@@ -201,7 +237,9 @@ function downloadVideo(index) {
       });
     });
     video.on("error", (err) => {
-      fs.rmSync(tmpOutputPath);
+      if (fs.existsSync(tmpOutputPath)) {
+        fs.rmSync(tmpOutputPath);
+      }
       reject(err);
     });
   });
@@ -218,9 +256,9 @@ function renderStatus(clearOutStatus = true) {
     `Current: ${currentIndex} - Start: ${startIndex} - End: ${endIndex} - Thread: ${runningThread}/${maxThread}`
   );
   console.log(
-    `Total: ${totalVideoCount} - Download: ${downloadVideoCount} - Exist: ${existVideoCount} - Error: ${JSON.stringify(
-      errorVideoIndexList
-    )} `
+    `Total: ${totalVideoCount} - Download: ${downloadVideoCount} - Exist: ${existVideoCount} - Error: ${
+      Object.keys(errorVideoIndexList).length
+    } `
   );
   console.log("Download new videos: ", !preventDownloadNewVideo);
   console.log(utils.consoleColor.Reset);
@@ -235,6 +273,32 @@ function renderStatus(clearOutStatus = true) {
     }
   });
 
+  console.log(utils.consoleColor.FgYellow, "\n");
+  let isShowRetry = false;
+  Object.keys(retryDownloadList).forEach((retryIndex) => {
+    let data = retryDownloadList[retryIndex];
+    if (!data || data.hide) {
+      return;
+    }
+    const key = data.index;
+    console.log(
+      `Retry: ${key} - Name: ${videoState[key].title} - Retry in: ${
+        (timeBetweenRetry - (Date.now() - data.lastTime)) / 1000
+      }s - Count: ${data.count}/${maxRetryCount}`
+    );
+    isShowRetry = true;
+  });
+
+  if (isShowRetry) {
+    console.log("\n");
+  }
+  Object.keys(errorVideoIndexList).forEach((index) => {
+    let message = errorVideoIndexList[index];
+    console.log(
+      `Error: ${index} - Name: ${videoState[index].title} - Message: ${message}`
+    );
+  });
+
   console.log(
     utils.consoleColor.FgCyan,
     `\nCommand:
@@ -245,6 +309,7 @@ function renderStatus(clearOutStatus = true) {
   => Last command: ${lastCommand}
   `
   );
+  console.log(utils.consoleColor.Reset);
 }
 
 main();
