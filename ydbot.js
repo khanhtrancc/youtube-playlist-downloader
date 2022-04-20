@@ -1,12 +1,15 @@
 const { ArgumentParser } = require("argparse");
 
 const config = require("./lib/config");
+const { convertVideosInRange } = require("./lib/convert-videos");
 const { downloadVideosInRange } = require("./lib/download-videos");
 const { listVideos } = require("./lib/list-videos-of-playlist");
+const { renameInRange } = require("./lib/rename");
 const {
   getState,
   syncStateWithDisk,
   resetDownloadingState,
+  resetConvertingState,
 } = require("./lib/state");
 const { syncStateWithFile } = require("./lib/sync-file");
 const utils = require("./lib/utils");
@@ -21,6 +24,7 @@ function parseArgs() {
   });
   commandParser.add_parser("list", { help: "List videos of playlist" });
   commandParser.add_parser("sync", { help: "Sync state" });
+  commandParser.add_parser("rename", { help: "Rename to readable audio" });
 
   const downloadParser = commandParser.add_parser("download", {
     help: "Download videos of playlist",
@@ -61,6 +65,8 @@ function main() {
     listVideos();
   } else if (args.command === "sync") {
     syncStateWithFile();
+  } else if(args.command === 'rename'){
+    renameInRange();
   } else if (args.command === "download") {
     syncStateWithDisk(true);
 
@@ -74,6 +80,19 @@ function main() {
       syncStateWithDisk();
     }
     downloadVideosInRange(startIndex, endIndex, maxThread);
+  } else if (args.command === "convert") {
+    syncStateWithDisk(true);
+
+    const state = getState();
+    const startIndex = args.startIndex || 0;
+    const endIndex = args.endIndex || state.indexToId.length - 1;
+    const maxThread = args.maxThread || 5;
+
+    if (args.reset) {
+      resetConvertingState();
+      syncStateWithDisk();
+    }
+    convertVideosInRange(startIndex, endIndex, maxThread);
   }
 }
 
