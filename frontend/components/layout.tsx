@@ -2,6 +2,8 @@ import Image from "next/image";
 import Head from "next/head";
 import type { ReactElement } from "react";
 import { useEffect } from "react";
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export const MainLayout = ({ children }: { children: ReactElement }) => {
   useEffect(() => {
@@ -40,11 +42,12 @@ export const MainLayout = ({ children }: { children: ReactElement }) => {
 
       <main className="container main">{children}</main>
 
-      <footer className="footer">
+      {/* <footer className="footer">
         <a target="_blank" rel="noopener noreferrer">
           Powered by Youtube Download Bot
         </a>
-      </footer>
+      </footer> */}
+      <ToastContainer/>
     </div>
   );
 };
