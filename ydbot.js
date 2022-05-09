@@ -1,18 +1,18 @@
 const { ArgumentParser } = require("argparse");
 
-const config = require("./lib/config");
-const { convertVideosInRange } = require("./lib/convert-videos");
-const { downloadVideosInRange } = require("./lib/download-videos");
-const { listVideos } = require("./lib/list-videos-of-playlist");
-const { renameInRange } = require("./lib/rename");
+const config = require("./core/config");
+const { convertVideosInRange } = require("./core/convert-videos");
+const { downloadVideosInRange } = require("./core/download-videos");
+const { listVideos } = require("./core/list-videos-of-playlist");
+const { renameInRange } = require("./core/rename");
 const {
   getState,
   syncStateWithDisk,
   resetDownloadingState,
   resetConvertingState,
-} = require("./lib/state");
-const { syncStateWithFile } = require("./lib/sync-file");
-const utils = require("./lib/utils");
+} = require("./core/state");
+const { syncStateWithFile } = require("./core/sync-file");
+const utils = require("./core/utils");
 
 function parseArgs() {
   const parser = new ArgumentParser({
