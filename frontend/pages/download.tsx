@@ -1,7 +1,7 @@
 import type { NextPage } from "next";
 import Head from "next/head";
 import Image from "next/image";
-import { useRouter } from "next/router";
+import Router, { useRouter } from "next/router";
 import { useState, useEffect } from "react";
 import { playlistApi } from "../api/playlist";
 import { MainLayout } from "../components/layout";
@@ -10,8 +10,12 @@ import { Video } from "../models/video";
 import { toast } from "react-toastify";
 import { videoApi } from "../api/video";
 import { utils } from "../helpers/utils";
+import { config } from "../config";
+import { io } from "socket.io-client";
+import VideoItem from "../components/video-item";
+import RunStatistic from "../components/run-status";
 
-const Home: NextPage = () => {
+const Home = ({ serverIp }: { serverIp: string | null }) => {
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [isRunning, setRunningState] = useState<boolean>(false);
@@ -20,21 +24,12 @@ const Home: NextPage = () => {
   const [start, setStart] = useState<string>("0");
   const [end, setEnd] = useState<string>("0");
   const [thread, setThread] = useState<string>("20");
-  const [status, setStatus] = useState<{
-    total: number;
-    downloaded: number;
-    error: number;
-    downloading: number;
-    waiting: number;
-    retry: number;
-  }>({
-    total: 0,
-    downloaded: 0,
-    error: 0,
-    downloading: 0,
-    waiting: 0,
-    retry: 0,
-  });
+  const [onlyDownload, setOnlyDownload] = useState(false);
+
+  if (serverIp) {
+    config.api = `http://${serverIp}:${config.serverPort}`;
+    config.ws = `http://${serverIp}:${config.socketPort}`;
+  }
 
   const router = useRouter();
   const { playlistId } = router.query;
@@ -43,6 +38,35 @@ const Home: NextPage = () => {
     if (!playlistId || typeof playlistId !== "string") {
       return;
     }
+    getPlaylistInfo();
+    getVideos(playlistId);
+
+    const socket = io(config.ws);
+
+    // Socket connection established, port is open
+    socket.on("connect", function () {
+      console.log("Connected to ws: ", config.ws);
+    });
+    socket.on("progress", (updatedData) => {
+      if (!updatedData || updatedData.length < 1) {
+        return;
+      }
+      setVideos((previousVideos) => {
+        const newState = [...previousVideos];
+        for (let i = 0; i < updatedData.length; i++) {
+          const index = newState.findIndex(
+            (item) => item.id === updatedData[i].id
+          );
+          if (index >= 0) {
+            newState[index] = updatedData[i];
+          }
+        }
+        return newState;
+      });
+    });
+  }, [playlistId]);
+
+  const getPlaylistInfo = () => {
     playlistApi.getPlaylists().then((data) => {
       if (data) {
         const list = data.find((item: Playlist) => item.id === playlistId);
@@ -51,31 +75,21 @@ const Home: NextPage = () => {
         toast.error("Get playlist failure");
       }
     });
-    getVideos(playlistId);
-  }, [playlistId]);
-
-  const updateStatus = (data: Video[]) => {
-    setEnd("" + (data.length - 1));
-    const status = {
-      total: 0,
-      downloaded: 0,
-      error: 0,
-      downloading: 0,
-      waiting: 0,
-      retry: 0,
-    };
-    for (let i = 0; i < data.length; i++) {
-      (status as any)[data[i].video_file.status]++;
-      status.total++;
-    }
-    setStatus(status);
   };
 
   const getVideos = (playlistId: string) => {
     videoApi.getVideosOfPlaylist(playlistId).then((data: Video[]) => {
       if (data) {
         setVideos(data);
-        updateStatus(data);
+
+        setEnd((oldEnd) => {
+          console.log("End index", oldEnd);
+          if (oldEnd === "0") {
+            const endIndex = data.length - 1;
+            return("" + endIndex);
+          }
+          return oldEnd;
+        });
       } else {
         toast.error("Get videos failure");
       }
@@ -103,7 +117,6 @@ const Home: NextPage = () => {
     videoApi.syncWithFile(playlistId).then((data) => {
       if (data) {
         setVideos(data);
-        updateStatus(data);
         toast.success("Sync state successfully!");
       } else {
         toast.error("Sync state failure");
@@ -111,19 +124,25 @@ const Home: NextPage = () => {
     });
   };
 
-  const download = (start: string, end: string, thread: string) => {
+  const download = (
+    start: string,
+    end: string,
+    thread: string,
+  ) => {
     if (typeof playlistId !== "string") {
       return;
     }
-    videoApi.download(playlistId, start, end, thread).then((data) => {
-      if (data) {
-        setVideos(data);
-        updateStatus(data);
-        toast.success("Start download successfully!");
-      } else {
-        toast.error("Start download failure");
-      }
-    });
+
+    videoApi
+      .download(playlistId, start, end, thread)
+      .then((data) => {
+        if (data) {
+          setVideos(data);
+          toast.success("Start download successfully!");
+        } else {
+          toast.error("Start download failure");
+        }
+      });
   };
 
   const stop = () => {
@@ -133,7 +152,6 @@ const Home: NextPage = () => {
     videoApi.stop(playlistId).then((data) => {
       if (data) {
         setVideos(data);
-        updateStatus(data);
         toast.success("Stop successfully!");
       } else {
         toast.error("Stop failure");
@@ -142,7 +160,7 @@ const Home: NextPage = () => {
   };
 
   return (
-    <MainLayout>
+    <MainLayout serverIp={config.api}>
       <div className="row mt-3">
         <div className="col-12 col-md-8">
           <div className="card">
@@ -152,186 +170,162 @@ const Home: NextPage = () => {
                 className=" overflow-scroll px-3"
                 style={{ maxHeight: "80vh" }}
               >
-                {videos.map((item) => {
-                  let videoColor = "bg-secondary text-white ";
-                  let audioColor = "bg-secondary text-white ";
-                  switch (item.video_file.status) {
-                    case "downloaded":
-                      videoColor = "bg-success text-white";
-                      break;
-                    case "downloading":
-                      videoColor = "bg-primary text-white";
-                      break;
-                    case "retrying":
-                    case "waiting":
-                      videoColor = "bg-warning text-white";
-                      break;
-                    case "error":
-                      videoColor = "bg-danger text-white";
-                      break;
-                  }
-                  switch (item.audio_file.status) {
-                    case "converting":
-                      videoColor = "bg-success text-white";
-                      break;
-                    case "converted":
-                      videoColor = "bg-primary text-white";
-                      break;
-                    case "retrying":
-                    case "waiting":
-                      videoColor = "bg-warning text-white";
-                      break;
-                    case "error":
-                      videoColor = "bg-danger text-white";
-                      break;
-                  }
-
-                  return (
-                    <div className="card mb-3" key={item.id}>
-                      <div className="row g-0">
-                        <div className="col-md-4">
-                          <img
-                            src={item.thumbnail}
-                            className="img-fluid rounded-start"
-                            alt={item.name}
-                          />
-                        </div>
-                        <div className="col-md-8">
-                          <div className="card-body">
-                            <h6 className="card-title">{item.name}</h6>
-                            <div className="row">
-                              {item.video_file.status === "downloading" && (
-                                <div className="col-12">
-                                  <div
-                                    className="progress"
-                                    style={{ height: "10px" }}
-                                  >
-                                    <div
-                                      className="progress-bar bg-primary progress-bar-striped progress-bar-animated"
-                                      role="progressbar"
-                                      style={{
-                                        width:
-                                          (item.video_file.percent || 0) + "%",
-                                      }}
-                                      aria-valuenow={item.video_file.percent}
-                                      aria-valuemin={0}
-                                      aria-valuemax={100}
-                                    >
-                                      {/* {item.video_file.percent || 0}% */}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                              <div className="col-12 ">
-                                <small
-                                  className={`${videoColor} px-2 py-1 rounded-pill`}
-                                  style={{ fontSize: "11px" }}
-                                >
-                                  {utils.toUpperCaseFirstLetter(
-                                    item.video_file.status
-                                  )}
-                                </small>
-                                <small className="text-muted mx-2">
-                                  {item.video_file.description}
-                                </small>
-                              </div>
-                              <div className="col-6">
-                                <small
-                                  className={`${audioColor} px-2 py-1 rounded-pill`}
-                                  style={{ fontSize: "11px" }}
-                                >
-                                  {utils.toUpperCaseFirstLetter(
-                                    item.audio_file.status
-                                  )}
-                                </small>
-                                {/* <small className="text-muted">
-                                  {item.audio_file.description}
-                                </small> */}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {videos
+                  .filter((item) => {
+                    const statusObj =   item.video_file;
+                    if (onlyDownload) {
+                      return (
+                        statusObj.status !== "none" &&
+                        statusObj.status !== "downloaded"
+                      );
+                    }
+                    return true;
+                  })
+                  .map((item) => {
+                    return <VideoItem key={item.id} data={item} />;
+                  })}
               </div>
             </div>
           </div>
         </div>
         <div className="col-12 col-md-4">
-          <div className="card">
-            <div className="card-header text-center">Status</div>
+          <RunStatistic
+            type={"download"}
+            videos={videos}
+            startIndex={parseInt(start)}
+            endIndex={parseInt(end)}
+          />
+          <div className="card mt-3 ">
+            <div className="card-header text-center">Tools</div>
             <div className="card-body">
-              <div className="progress">
-                <div
-                  className="progress-bar bg-success progress-bar-striped progress-bar-animated"
-                  role="progressbar"
-                  style={{ width: "25%" }}
-                  aria-valuenow={25}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                >
-                  25%
-                </div>
+              <div className="form-check">
+                <input
+                  className="form-check-input"
+                  type="radio"
+                  name="flexRadioDefault"
+                  id="flexRadioDefault1"
+                  checked={onlyDownload}
+                  onChange={(event) => {
+                    setOnlyDownload(event.target.checked);
+                  }}
+                />
+                <label className="form-check-label" htmlFor="flexRadioDefault1">
+                  Show only downloading videos
+                </label>
+              </div>
+              <div className="form-check">
+                <input
+                  className="form-check-input"
+                  type="radio"
+                  name="flexRadioDefault"
+                  id="flexRadioDefault2"
+                  checked={!onlyDownload}
+                  onChange={(event) => {
+                    setOnlyDownload(false);
+                  }}
+                />
+                <label className="form-check-label" htmlFor="flexRadioDefault2">
+                  Show all videos
+                </label>
               </div>
 
-              <div className="row">
-                <div className="col-4" style={{ fontSize: "14px" }}>
-                  Total:{" "}
-                  <span className="text-success">
-                    <br />
-                    {status.total}
-                  </span>
+              <div className="row mx-0 justify-content-between mt-3">
+                <div className="col-6 row">
+                  <button
+                    type="submit"
+                    className="btn btn-danger btn-sm"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      stop();
+                    }}
+                  >
+                    Stop
+                  </button>
                 </div>
-                <div className="col-4 px-0" style={{ fontSize: "14px" }}>
-                  Downloaded:{" "}
-                  <span className="text-success">
-                    <br />
-                    {status.downloaded}
-                  </span>
-                </div>
-                <div className="col-4" style={{ fontSize: "14px" }}>
-                  Failure:{" "}
-                  <span className="text-success">
-                    <br />
-                    {status.error}
-                  </span>
-                </div>
-                <div className="col-4" style={{ fontSize: "14px" }}>
-                  Waiting:{" "}
-                  <span className="text-success">
-                    <br />
-                    {status.waiting}
-                  </span>
-                </div>
-                <div className="col-4 px-0" style={{ fontSize: "14px" }}>
-                  Downloading:{" "}
-                  <span className="text-success">
-                    <br />
-                    {status.downloading}
-                  </span>
-                </div>
-                <div className="col-4" style={{ fontSize: "14px" }}>
-                  Retry:{" "}
-                  <span className="text-success">
-                    <br />
-                    {status.retry}
-                  </span>
+                <div className="col-6 row">
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-sm"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      syncWithFile();
+                    }}
+                  >
+                    Sync with file
+                  </button>
                 </div>
               </div>
-              <div className="row mx-0 justify-content-end mt-3">
-                <button
-                  type="submit"
-                  className="btn btn-danger"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    stop();
-                  }}
-                >
-                  Stop
-                </button>
-              </div>
+            </div>
+          </div>
+
+          <div className="card mb-3">
+            <div className="card-header text-center">Download</div>
+            <div className="card-body">
+              <form className=" mt-2">
+                <div className="row">
+                  <label htmlFor="inputEmail4" className="col-4 col-form-label">
+                    Start Index
+                  </label>
+                  <div className="col-6">
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      id="text"
+                      value={start}
+                      onChange={(event) => setStart(event.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="row">
+                  <label
+                    htmlFor="inputPassword4"
+                    className="col-4 col-form-label"
+                  >
+                    End Index
+                  </label>
+                  <div className="col-6">
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      id="inputPassword4"
+                      value={end}
+                      onChange={(event) => setEnd(event.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="row">
+                  <label
+                    htmlFor="inputPassword4"
+                    className="col-4 col-form-label"
+                  >
+                    Thread
+                  </label>
+                  <div className="col-6">
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      id="inputPassword4"
+                      value={thread}
+                      onChange={(event) => setThread(event.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="row mx-0 mt-3">
+                  <div className="col-12 row mx-0">
+                    <button
+                      type="submit"
+                      className="btn btn-primary btn-sm"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        download(start, end, thread);
+                      }}
+                    >
+                      Download
+                    </button>
+                  </div>
+                </div>
+              </form>
             </div>
           </div>
 
@@ -341,29 +335,39 @@ const Home: NextPage = () => {
                 <div className="card-header text-center">Name Replace Tool</div>
                 <div className="card-body">
                   <form className=" mt-2">
-                    <div className="col-12">
-                      <label htmlFor="inputEmail4" className="form-label">
-                        Search (Regex)
+                    <div className="col-12 row">
+                      <label
+                        htmlFor="inputEmail4"
+                        className="col-4 col-form-label"
+                      >
+                        Search
                       </label>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        id="text"
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                      />
+                      <div className="col-8">
+                        <input
+                          type="text"
+                          className="form-control form-control-sm"
+                          id="text"
+                          value={search}
+                          onChange={(event) => setSearch(event.target.value)}
+                        />
+                      </div>
                     </div>
-                    <div className="col-12">
-                      <label htmlFor="inputPassword4" className="form-label">
-                        Replace (Regex)
+                    <div className="col-12 row">
+                      <label
+                        htmlFor="inputPassword4"
+                        className="col-4 col-form-label"
+                      >
+                        Replace
                       </label>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        id="inputPassword4"
-                        value={replace}
-                        onChange={(event) => setReplace(event.target.value)}
-                      />
+                      <div className="col-8">
+                        <input
+                          type="text"
+                          className="form-control form-control-sm"
+                          id="inputPassword4"
+                          value={replace}
+                          onChange={(event) => setReplace(event.target.value)}
+                        />
+                      </div>
                     </div>
 
                     <div className="row mx-0 justify-content-end mt-3">
@@ -381,92 +385,6 @@ const Home: NextPage = () => {
                   </form>
                 </div>
               </div>
-
-              <div className="card mb-3">
-                <div className="card-header text-center">Download/Convert</div>
-                <div className="card-body">
-                  <form className=" mt-2">
-                    <div className="col-12">
-                      <label htmlFor="inputEmail4" className="form-label">
-                        Start Index
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        id="text"
-                        value={start}
-                        onChange={(event) => setStart(event.target.value)}
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label htmlFor="inputPassword4" className="form-label">
-                        End Index
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        id="inputPassword4"
-                        value={end}
-                        onChange={(event) => setEnd(event.target.value)}
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label htmlFor="inputPassword4" className="form-label">
-                        Thread
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        id="inputPassword4"
-                        value={thread}
-                        onChange={(event) => setThread(event.target.value)}
-                      />
-                    </div>
-                    <div className="row mx-0 mt-3">
-                      <div className="col-6 row mx-0">
-                        <button
-                          type="submit"
-                          className="btn btn-primary btn-sm"
-                          onClick={(event) => {
-                            event.preventDefault();
-                            download(start, end, thread);
-                          }}
-                        >
-                          Download
-                        </button>
-                      </div>
-                      <div className="col-6 row mx-0">
-                        <button
-                          type="submit"
-                          className="btn btn-primary btn-sm"
-                        >
-                          Convert
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-                </div>
-              </div>
-
-              <div className="card mb-3">
-                <div className="card-header text-center">Sync with file</div>
-                <div className="card-body">
-                  <form className=" mt-2">
-                    <div className="row mx-0 justify-content-end mt-3">
-                      <button
-                        type="submit"
-                        className="btn btn-primary btn-sm"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          syncWithFile();
-                        }}
-                      >
-                        Sync
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
             </>
           )}
         </div>
@@ -474,5 +392,15 @@ const Home: NextPage = () => {
     </MainLayout>
   );
 };
+
+export async function getServerSideProps() {
+  console.log("Render download");
+  const ip = await utils.scanServer(config.socketPort);
+  return {
+    props: {
+      serverIp: ip,
+    },
+  };
+}
 
 export default Home;

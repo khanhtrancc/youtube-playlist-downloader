@@ -1,16 +1,18 @@
 import { Injectable } from '@nestjs/common';
-import { db } from 'src/helpers/db';
+import { DbHelper } from 'src/modules/common/db.helper';
 import { Playlist } from 'src/models/playlist';
 
 @Injectable()
 export class PlaylistService {
+  constructor(private dbHelper: DbHelper) {}
+
   getPlaylists(query): Playlist[] {
-    const model = db.getCollection('playlist');
+    const model = this.dbHelper.db.getCollection('playlist');
     return model.find(query);
   }
 
   getPlaylistById(id: string): Playlist | null {
-    const model = db.getCollection('playlist');
+    const model = this.dbHelper.db.getCollection('playlist');
     const list = model.find({ id });
     if (list.length > 0) {
       return list[0];
@@ -19,12 +21,12 @@ export class PlaylistService {
   }
 
   addPlaylist(playlist: Playlist): boolean {
-    const model = db.getCollection('playlist');
+    const model = this.dbHelper.db.getCollection('playlist');
     return model.insert(playlist);
   }
 
   delete(playlistId: string): boolean {
-    const model = db.getCollection('playlist');
+    const model = this.dbHelper.db.getCollection('playlist');
     return model.removeWhere((item) => item.id === playlistId);
   }
 }

@@ -1,15 +1,21 @@
 import Image from "next/image";
 import Head from "next/head";
 import type { ReactElement } from "react";
-import { useEffect } from "react";
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { useEffect, useState } from "react";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { config } from "../config";
 
-export const MainLayout = ({ children }: { children: ReactElement }) => {
+export const MainLayout = ({
+  children,
+  serverIp,
+}: {
+  serverIp: string;
+  children: ReactElement;
+}) => {
+
   useEffect(() => {
-    typeof document !== undefined
-      ? require("bootstrap/dist/js/bootstrap")
-      : null;
+    config.isBrowser ? require("bootstrap/dist/js/bootstrap") : null;
   }, []);
 
   return (
@@ -24,7 +30,7 @@ export const MainLayout = ({ children }: { children: ReactElement }) => {
 
       <nav
         className="navbar navbar-light bg-light"
-        style={{ backgroundColor: "#e3f2fd !important"  }}
+        style={{ backgroundColor: "#e3f2fd !important" }}
       >
         <div className="container-fluid">
           <a className="navbar-brand text-logo" href="/">
@@ -42,12 +48,12 @@ export const MainLayout = ({ children }: { children: ReactElement }) => {
 
       <main className="container main">{children}</main>
 
-      {/* <footer className="footer">
+      <footer className="footer">
         <a target="_blank" rel="noopener noreferrer">
-          Powered by Youtube Download Bot
+          Powered by Youtube Download Bot. Server Ip: {serverIp}
         </a>
-      </footer> */}
-      <ToastContainer/>
+      </footer>
+      <ToastContainer />
     </div>
   );
 };

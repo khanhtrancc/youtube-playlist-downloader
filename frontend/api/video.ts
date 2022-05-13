@@ -50,7 +50,7 @@ function replaceName(playlistId: string, search: string, replace: string) {
 }
 
 function syncWithFile(playlistId: string) {
-  const api = `${config.api}/api/video/sync-state`;
+  const api = `${config.api}/api/playlist/sync-state`;
   return axios
     .post(api, { playlist_id: playlistId })
     .then((res) => {
@@ -69,11 +69,16 @@ function download(
   playlistId: string,
   start: string,
   end: string,
-  thread: string
+  thread: string,
 ) {
-  const api = `${config.api}/api/video/download`;
+  const api = `${config.api}/api/download/start`;
   return axios
-    .post(api, { playlist_id: playlistId, start, end, thread })
+    .post(api, {
+      playlist_id: playlistId,
+      start,
+      end,
+      thread,
+    })
     .then((res) => {
       if (res.data.code === 200) {
         return res.data.data;
@@ -86,13 +91,10 @@ function download(
     });
 }
 
-
-function stop(
-  playlistId: string,
-) {
-  const api = `${config.api}/api/video/stop`;
+function stop(playlistId: string) {
+  const api = `${config.api}/api/download/stop`;
   return axios
-    .post(api, { playlist_id: playlistId})
+    .post(api, { playlist_id: playlistId })
     .then((res) => {
       if (res.data.code === 200) {
         return res.data.data;

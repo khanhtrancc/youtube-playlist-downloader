@@ -1,12 +1,17 @@
 import { Module } from '@nestjs/common';
-import { PlaylistController } from './playlist/playlist.controller';
-import { PlaylistService } from './playlist/playlist.service';
-import { VideoController } from './video/video.controller';
-import { VideoService } from './video/video.service';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CommonModule } from './common/common.module';
+import { DownloadModule } from './download/download.module';
+import { PlaylistModule } from './playlist/playlist.module';
+import { VideoModule } from './video/video.module';
 
 @Module({
-  imports: [],
-  controllers: [PlaylistController, VideoController],
-  providers: [PlaylistService, VideoService],
+  imports: [
+    PlaylistModule,
+    VideoModule,
+    CommonModule,
+    DownloadModule,
+    ScheduleModule.forRoot(),
+  ],
 })
 export class AppModule {}

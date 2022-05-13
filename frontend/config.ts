@@ -1,3 +1,10 @@
+const serverPort = 8080;
+const socketPort = 8080;
 export const config = {
-    api: 'http://localhost:3000',
-}
+  hadScanServer: false,
+  serverPort,
+  socketPort,
+  api: "http://localhost:" + serverPort,
+  ws: "ws://localhost:" + socketPort,
+  isBrowser: typeof window !== "undefined",
+};

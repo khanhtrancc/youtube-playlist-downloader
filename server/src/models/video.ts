@@ -26,6 +26,7 @@ export interface Video {
       | 'waiting';
     description: string;
     retry_count: number;
+    percent?: number;
     updated_at: number;
   };
 }

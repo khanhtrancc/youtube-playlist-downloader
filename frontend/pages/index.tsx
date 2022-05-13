@@ -7,11 +7,18 @@ import { playlistApi } from "../api/playlist";
 import { ToastContainer, toast } from "react-toastify";
 import { Playlist } from "../models/playlist";
 import Link from "next/link";
+import { config } from "../config";
+import Router from "next/router";
+import { utils } from "../helpers/utils";
 
-const Home: NextPage = () => {
+const Home = ({ serverIp }: { serverIp: string | null }) => {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [id, setId] = useState<string>("");
 
+  if (serverIp) {
+    config.api = `http://${serverIp}:${config.serverPort}`;
+    config.ws = `http://${serverIp}:${config.socketPort}`;
+  }
   useEffect(() => {
     playlistApi.getPlaylists().then((data) => {
       if (data) {
@@ -43,7 +50,7 @@ const Home: NextPage = () => {
   };
 
   return (
-    <MainLayout>
+    <MainLayout serverIp={config.api}>
       <div className="row mt-3">
         <div className="col-12 col-md-8">
           <div className="card">
@@ -147,5 +154,15 @@ const Home: NextPage = () => {
     </MainLayout>
   );
 };
+
+export async function getServerSideProps() {
+  console.log("Render playlist");
+  const ip = await utils.scanServer(config.socketPort);
+  return {
+    props: {
+      serverIp: ip,
+    },
+  };
+}
 
 export default Home;
