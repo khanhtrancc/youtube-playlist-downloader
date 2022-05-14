@@ -5,7 +5,12 @@ import { DbHelper } from 'src/modules/common/db.helper';
 
 @Injectable()
 export class VideoService {
-  constructor(private readonly dbHelper: DbHelper) {}
+  constructor(private readonly dbHelper: DbHelper) {
+    const model  = this.dbHelper.db.getCollection('video');
+    if(!model){
+      this.dbHelper.db.addCollection('video');
+    }
+  }
 
   get(query): Video[] {
     const model = this.dbHelper.db.getCollection('video');
