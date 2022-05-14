@@ -1,5 +1,6 @@
 require('dotenv').config();
 import { NestFactory } from '@nestjs/core';
+import { config } from './config';
 import { AppModule } from './modules/app.module';
 
 async function bootstrap() {
@@ -7,6 +8,6 @@ async function bootstrap() {
   app.enableCors();
 
   // app.useGlobalFilters(new HttpExceptionFilter())
-  await app.listen(8080);
+  await app.listen(config.port);
 }
 bootstrap();

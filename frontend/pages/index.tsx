@@ -10,15 +10,17 @@ import Link from "next/link";
 import { config } from "../config";
 import Router from "next/router";
 import { utils } from "../helpers/utils";
+import { configApi } from "../api/config";
 
 const Home = ({ serverIp }: { serverIp: string | null }) => {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [id, setId] = useState<string>("");
 
   if (serverIp) {
-    config.api = `http://${serverIp}:${config.serverPort}`;
-    config.ws = `http://${serverIp}:${config.socketPort}`;
+    config.api = serverIp;
+    config.ws = serverIp;
   }
+
   useEffect(() => {
     playlistApi.getPlaylists().then((data) => {
       if (data) {
@@ -156,11 +158,11 @@ const Home = ({ serverIp }: { serverIp: string | null }) => {
 };
 
 export async function getServerSideProps() {
-  console.log("Render playlist");
-  const ip = await utils.scanServer(config.socketPort);
+  const config = await configApi.getConfig();
+  const serverIp = config ? config.serverAddress : null;
   return {
     props: {
-      serverIp: ip,
+      serverIp,
     },
   };
 }

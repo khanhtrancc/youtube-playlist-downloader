@@ -11,7 +11,7 @@ function Videodata({ data }: { data: Video }) {
     case "downloading":
       videoColor = "bg-primary text-white";
       break;
-    case "retrying":
+    case "retry":
     case "waiting":
       videoColor = "bg-warning text-white";
       break;
@@ -20,13 +20,13 @@ function Videodata({ data }: { data: Video }) {
       break;
   }
   switch (data.audio_file.status) {
-    case "converting":
+    case "converted":
       audioColor = "bg-success text-white";
       break;
-    case "converted":
+    case "converting":
       audioColor = "bg-primary text-white";
       break;
-    case "retrying":
+    case "retry":
     case "waiting":
       audioColor = "bg-warning text-white";
       break;
@@ -44,9 +44,12 @@ function Videodata({ data }: { data: Video }) {
             alt={data.name}
           />
         </div>
-        <div className="col-md-8">
+        <div className="col-md-10">
           <div className="card-body">
-            <h6 className="card-title">{data.name}</h6>
+            <h6 className="card-title">
+              {data.name}
+              <small className="text-secondary"> ({data.id})</small>
+            </h6>
             <div className="row">
               {data.video_file.status === "downloading" && (
                 <div className="col-12">
@@ -80,7 +83,9 @@ function Videodata({ data }: { data: Video }) {
                   {utils.toUpperCaseFirstLetter(data.audio_file.status)}
                 </small>
                 <small className="text-muted mx-2">
-                  {data.video_file.description}
+                  {data.audio_file.status !== "none"
+                    ? data.audio_file.description
+                    : data.video_file.description}
                 </small>
               </div>
             </div>

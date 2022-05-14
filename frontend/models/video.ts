@@ -8,7 +8,7 @@ export interface Video {
       | "downloading"
       | "downloaded"
       | "error"
-      | "retrying"
+      | "retry"
       | "none"
       | "waiting";
     description: string;
@@ -21,7 +21,7 @@ export interface Video {
       | "converting"
       | "converted"
       | "error"
-      | "retrying"
+      | "retry"
       | "none"
       | "waiting";
     description: string;

@@ -5,17 +5,17 @@ import { Video } from 'src/models/video';
 import { EventsGateway } from '../common/events.gateway';
 import { FileHelper } from '../common/file.helper';
 import { VideoService } from '../video/video.service';
-import { DownloadService } from './download.service';
+import { ConvertService } from './convert.service';
 
 @Injectable()
-export class DownloadJob {
+export class ConvertJob {
   constructor(
     private readonly videoService: VideoService,
-    private readonly downloadService: DownloadService,
+    private readonly convertService: ConvertService,
     private readonly eventGateway: EventsGateway,
     private readonly fileHelper: FileHelper,
   ) {
-    this.downloadService.on('update', (videos) => {
+    this.convertService.on('update', (videos) => {
       if (!videos || videos.length === 0) {
         return;
       }
@@ -24,45 +24,46 @@ export class DownloadJob {
       });
       this.eventGateway.emit('progress', videos);
     });
-    this.downloadService.on('state', (state) => {
-      console.log('Change download state', state);
-      this.eventGateway.emit('download-state', state);
+
+    this.convertService.on('state', (state) => {
+      console.log('Change convert state', state);
+      this.eventGateway.emit('convert-state', state);
     });
   }
 
   @Cron('* * * * * *')
   findNeedDownloadVideo() {
-    //get video has waiting status and start download
-    let needDownloadVideos: Video[] = this.videoService.where({
-      'video_file.status': 'waiting',
+    //get video has waiting status and start convert
+    let needConvertVideos: Video[] = this.videoService.where({
+      'audio_file.status': 'waiting',
     });
 
-    needDownloadVideos.reverse();
-    if (needDownloadVideos.length > 0) {
-      this.downloadService.addVideo(needDownloadVideos[0]);
+    needConvertVideos.reverse();
+    if (needConvertVideos.length > 0) {
+      this.convertService.addVideo(needConvertVideos[0]);
     } else if (
-      this.downloadService.isRunning &&
-      this.downloadService.getVideos().length === 0
+      this.convertService.isRunning &&
+      this.convertService.getVideos().length === 0
     ) {
       //check finish
       const retryVideos: Video[] = this.videoService.where({
-        'video_file.status': 'retry',
+        'audio_file.status': 'retry',
       });
       if (retryVideos.length === 0) {
-        this.downloadService.changeRunningState(false);
+        this.convertService.changeRunningState(false);
       }
     }
   }
 
   @Interval(config.retryDelayTime)
   checkRetry() {
-    const retryVideos: Video[] = this.videoService.where({
-      'video_file.status': 'retry',
+    let retryVideos: Video[] = this.videoService.where({
+      'audio_file.status': 'retry',
     });
 
     for (let i = 0; i < retryVideos.length; i++) {
       const video: Video = retryVideos[i];
-      const statusObj = video.video_file;
+      const statusObj = video.audio_file;
       if (statusObj.retry_count >= config.maxRetryCount) {
         statusObj.status = 'error';
         statusObj.updated_at = Date.now();
@@ -81,7 +82,7 @@ export class DownloadJob {
   @Timeout(1000)
   resetUnfinishedVideos() {
     const videos = this.videoService.where({
-      'video_file.status': 'downloading',
+      'audio_file.status': 'converting',
     });
     console.log(`Found ${videos.length} unfinished videos. Reseting...`);
     videos.forEach((item) => {
@@ -90,9 +91,9 @@ export class DownloadJob {
         'tmp',
       );
 
-      const tmpOutputPath = `${tmpBasePath}/${item.id}.mp4`;
+      const tmpOutputPath = `${tmpBasePath}/${item.id}.mp3`;
       this.fileHelper.removeFileOrDirIfExisted(tmpOutputPath);
-      item.video_file.status = 'none';
+      item.audio_file.status = 'none';
       this.videoService.updateDoc(item);
     });
   }

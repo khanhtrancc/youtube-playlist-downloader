@@ -53,7 +53,8 @@ export class VideoController {
     }
     const existedVideos = this.videoService.get({ playlist_id });
     existedVideos.forEach((item) => {
-      item.name = item.name.replace(search, replace);
+      const regex = RegExp(search)
+      item.name = item.name.replace(regex, replace);
       this.videoService.updateDoc(item);
     });
 

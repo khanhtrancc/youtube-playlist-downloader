@@ -4,22 +4,21 @@ import { ResponseFactory } from 'src/helpers/response';
 import { PlaylistService } from '../playlist/playlist.service';
 import { numberUtils } from 'src/helpers/number';
 import { VideoService } from '../video/video.service';
-import { DownloadService } from './download.service';
 import { FileHelper } from '../common/file.helper';
-import * as fs from 'fs';
+import { ConvertService } from './convert.service';
 
-@Controller('/api/download')
-export class DownloadController {
+@Controller('/api/convert')
+export class ConvertController {
   constructor(
     private readonly videoService: VideoService,
-    private readonly downloadService: DownloadService,
+    private readonly convertService: ConvertService,
     private readonly playlistService: PlaylistService,
     private readonly fileHelper: FileHelper,
   ) {}
 
   @Post('/start')
   async start(@Req() req: Request) {
-    const { thread, end, start, playlist_id, only_audio } = req.body;
+    const { thread, end, start, playlist_id } = req.body;
     if (
       typeof start !== 'string' ||
       typeof end !== 'string' ||
@@ -36,8 +35,10 @@ export class DownloadController {
     const endIndex = numberUtils.parseInt(end, videos.length);
     const maxThread = numberUtils.parseInt(thread, 10);
 
+    const playlist = this.playlistService.getPlaylistById(playlist_id);
+
     this.fileHelper.createPlaylistFolderIfNeed(playlist_id);
-    this.downloadService.setMaxThread(maxThread);
+    this.convertService.setMaxThread(maxThread);
 
     // change status of videos to waiting
     for (
@@ -46,12 +47,9 @@ export class DownloadController {
       i++
     ) {
       const video = videos[i];
-      const statusObj = only_audio ? video.audio_file : video.video_file;
-      if (statusObj.status === 'downloaded') {
-        continue;
-      }
-      if (statusObj.status === 'downloading') {
-        if (this.downloadService.hasVideo(video)) {
+      const statusObj = video.audio_file;
+      if (statusObj.status === 'converted') {
+        if (this.convertService.hasVideo(video)) {
           continue;
         }
       }
@@ -78,12 +76,12 @@ export class DownloadController {
     for (let i = 0; i < videos.length; i++) {
       const video = videos[i];
       if (
-        video.video_file.status === 'waiting' ||
+        video.audio_file.status === 'waiting' ||
         video.audio_file.status === 'retry' ||
-        (video.video_file.status === 'downloading' &&
-          !this.downloadService.hasVideo(video))
+        (video.audio_file.status === 'converting' &&
+          !this.convertService.hasVideo(video))
       ) {
-        video.video_file.status = 'none';
+        video.audio_file.status = 'none';
         this.videoService.updateDoc(video);
       }
     }

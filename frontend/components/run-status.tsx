@@ -5,11 +5,19 @@ function RunStatistic({
   type,
   startIndex,
   endIndex,
+  isRunning,
+  onSync,
+  onStop,
+  onRemoveFile,
 }: {
   videos: Video[];
   type: "download" | "convert";
   startIndex: number;
   endIndex: number;
+  isRunning: boolean;
+  onSync: () => any;
+  onStop: () => any;
+  onRemoveFile: () => any;
 }) {
   let all = {
     total: 0,
@@ -58,68 +66,110 @@ function RunStatistic({
     current.total > 0 ? Math.round((current.runned / current.total) * 100) : 0;
 
   return (
-      <>
-    <div className="card ">
-      <div className="card-header text-center">Session Status</div>
-      <div className="card-body">
-        <div className="progress">
-          <div
-            className="progress-bar bg-success progress-bar-striped progress-bar-animated"
-            role="progressbar"
-            style={{ width: percent + "%" }}
-            aria-valuenow={percent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          >
-            {percent}%
+    <>
+      <div className="card ">
+        <div className="card-header text-center">Session Status</div>
+        <div className="card-body">
+          <div className="progress">
+            <div
+              className="progress-bar bg-success progress-bar-striped progress-bar-animated"
+              role="progressbar"
+              style={{ width: percent + "%" }}
+              aria-valuenow={percent}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              {percent}%
+            </div>
           </div>
-        </div>
-        <div className="row">
-          <div className="col-4" style={{ fontSize: "14px" }}>
-            Total:{" "}
-            <span className="text-success">
-              <br />
-              {current.total}
-            </span>
-          </div>
-          <div className="col-4 px-0" style={{ fontSize: "14px" }}>
-            Downloaded:{" "}
-            <span className="text-success">
-              <br />
-              {current.runned}
-            </span>
-          </div>
-          <div className="col-4" style={{ fontSize: "14px" }}>
-            Failure:{" "}
-            <span className="text-success">
-              <br />
-              {current.error}
-            </span>
-          </div>
-          <div className="col-4" style={{ fontSize: "14px" }}>
-            Waiting:{" "}
-            <span className="text-success">
-              <br />
-              {current.waiting}
-            </span>
-          </div>
-          <div className="col-4 px-0" style={{ fontSize: "14px" }}>
-            Downloading:{" "}
-            <span className="text-success">
-              <br />
-              {current.running}
-            </span>
-          </div>
-          <div className="col-4" style={{ fontSize: "14px" }}>
-            Retry:{" "}
-            <span className="text-success">
-              <br />
-              {current.retry}
-            </span>
+          <div className="row">
+            <div className="col-4" style={{ fontSize: "14px" }}>
+              Total:{" "}
+              <span className="text-success">
+                <br />
+                {current.total}
+              </span>
+            </div>
+            <div className="col-4 px-0" style={{ fontSize: "14px" }}>
+              Downloaded:{" "}
+              <span className="text-success">
+                <br />
+                {current.runned}
+              </span>
+            </div>
+            <div className="col-4" style={{ fontSize: "14px" }}>
+              Failure:{" "}
+              <span className="text-success">
+                <br />
+                {current.error}
+              </span>
+            </div>
+            <div className="col-4" style={{ fontSize: "14px" }}>
+              Waiting:{" "}
+              <span className="text-success">
+                <br />
+                {current.waiting}
+              </span>
+            </div>
+            <div className="col-4 px-0" style={{ fontSize: "14px" }}>
+              Downloading:{" "}
+              <span className="text-success">
+                <br />
+                {current.running}
+              </span>
+            </div>
+            <div className="col-4" style={{ fontSize: "14px" }}>
+              Retry:{" "}
+              <span className="text-success">
+                <br />
+                {current.retry}
+              </span>
+            </div>
+            {!isRunning && (
+              <>
+                <div className="col-6">
+                  <a
+                    href="#"
+                    style={{ fontSize: "12px" }}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      onSync();
+                    }}
+                  >
+                    Sync from file
+                  </a>
+                </div>
+                <div className="col-6">
+                  <a
+                    href="#"
+                    style={{ fontSize: "12px", color: 'red' }}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      onRemoveFile();
+                    }}
+                  >
+                    Remove all files
+                  </a>
+                </div>
+              </>
+            )}
+            {isRunning && (
+              <div className="col-6">
+                <a
+                  href="#"
+                  style={{ fontSize: "12px", color: "red" }}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    onStop();
+                  }}
+                >
+                  Stop {type}
+                </a>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </div>
     </>
   );
 }

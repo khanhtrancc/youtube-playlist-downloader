@@ -5,8 +5,7 @@ import { EventEmitter } from 'events';
 import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { FileHelper } from 'src/modules/common/file.helper';
-import * as stream from 'stream';
-import * as ffmpeg from 'ffmpeg';
+import { config } from 'src/config';
 
 @Injectable()
 export class DownloadService {
@@ -15,6 +14,7 @@ export class DownloadService {
   private videos: Video[] = [];
   private emitter = new EventEmitter();
   private maxThread = 10;
+  public isRunning = false;
 
   setMaxThread(thread) {
     this.maxThread = thread;
@@ -24,7 +24,15 @@ export class DownloadService {
     return this.maxThread;
   }
 
+  changeRunningState(isRunning: boolean) {
+    if (this.isRunning !== isRunning) {
+      this.emitter.emit('state', isRunning);
+    }
+    this.isRunning = isRunning;
+  }
+
   addVideo(video: Video) {
+    this.changeRunningState(true);
     if (this.videos.length >= this.maxThread) {
       return false;
     }
@@ -37,7 +45,10 @@ export class DownloadService {
     return this.videos;
   }
 
-  on(type: 'update', handleFunc: (videos: Video[]) => any) {
+  on(
+    type: 'update' | 'state',
+    handleFunc: ((videos: Video[]) => any) | ((state: boolean) => any),
+  ) {
     this.emitter.on(type, handleFunc);
   }
 
@@ -107,33 +118,34 @@ export class DownloadService {
     });
 
     downloader.on('end', () => {
-      fs.copyFile(
-        tmpOutputPath,
-        `${videoBasePath}/${video.id}.mp4`,
-        (err) => {
-          this.fileHelper.removeFileIfExisted(tmpOutputPath);
+      fs.copyFile(tmpOutputPath, `${videoBasePath}/${video.id}.mp4`, (err) => {
+        this.fileHelper.removeFileOrDirIfExisted(tmpOutputPath);
 
-          if (err) {
-            statusObj.status = 'retry';
-            statusObj.retry_count++;
-            statusObj.updated_at = Date.now();
-            this.removeVideo(video);
-            this.emitter.emit('update', [video]);
-            return;
-          }
-          statusObj.status = 'downloaded';
+        if (err) {
+          statusObj.status = 'retry';
+          statusObj.retry_count++;
           statusObj.updated_at = Date.now();
           this.removeVideo(video);
           this.emitter.emit('update', [video]);
-        },
-      );
+          return;
+        }
+        statusObj.status = 'downloaded';
+        statusObj.updated_at = Date.now();
+        this.removeVideo(video);
+        this.emitter.emit('update', [video]);
+      });
     });
 
     downloader.on('error', (err) => {
-      this.fileHelper.removeFileIfExisted(tmpOutputPath);
+      this.fileHelper.removeFileOrDirIfExisted(tmpOutputPath);
 
       statusObj.status = 'retry';
       statusObj.retry_count++;
+      statusObj.description = `Retry ${statusObj.retry_count}/${
+        config.maxRetryCount
+      }. Retry at ${new Date(
+        Date.now() + config.retryDelayTime,
+      ).toLocaleString()}`;
       statusObj.updated_at = Date.now();
       this.removeVideo(video);
       this.emitter.emit('update', [video]);

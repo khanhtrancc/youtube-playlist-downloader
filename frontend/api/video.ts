@@ -65,16 +65,23 @@ function syncWithFile(playlistId: string) {
     });
 }
 
-function download(
-  playlistId: string,
-  start: string,
-  end: string,
-  thread: string,
-) {
-  const api = `${config.api}/api/download/start`;
+function start({
+  playlist_id,
+  start,
+  end,
+  thread,
+  action,
+}: {
+  playlist_id: string;
+  start: string;
+  end: string;
+  thread: string;
+  action: "download" | "convert";
+}) {
+  const api = `${config.api}/api/${action}/start`;
   return axios
     .post(api, {
-      playlist_id: playlistId,
+      playlist_id,
       start,
       end,
       thread,
@@ -91,10 +98,16 @@ function download(
     });
 }
 
-function stop(playlistId: string) {
-  const api = `${config.api}/api/download/stop`;
+function stop({
+  playlist_id,
+  action,
+}: {
+  playlist_id: string;
+  action: "download" | "convert";
+}) {
+  const api = `${config.api}/api/${action}/stop`;
   return axios
-    .post(api, { playlist_id: playlistId })
+    .post(api, { playlist_id })
     .then((res) => {
       if (res.data.code === 200) {
         return res.data.data;
@@ -107,11 +120,42 @@ function stop(playlistId: string) {
     });
 }
 
+function getRunningState() {
+  const dapi = `${config.api}/api/download/state`;
+  const capi = `${config.api}/api/convert/state`;
+  return Promise.all([
+    axios.get(dapi).then((res) => {
+      if (res.data.code === 200) {
+        return res.data.data;
+      }
+      return null;
+    }),
+    axios.get(capi).then((res) => {
+      if (res.data.code === 200) {
+        return res.data.data;
+      }
+      return null;
+    }),
+  ])
+    .then((data) => {
+      return {
+        isDownloading: data[0] && data[0].isRunning,
+        isConverting: data[1] && data[1].isRunning,
+      };
+    })
+    .catch((err) => {
+      return { isDownloading: false, isConverting: false };
+    });
+}
+
+
+
 export const videoApi = {
   getVideosOfPlaylist,
   removeVideo,
   replaceName,
   syncWithFile,
-  download,
+  start,
   stop,
+  getRunningState,
 };
