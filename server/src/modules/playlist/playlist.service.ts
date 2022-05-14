@@ -5,10 +5,12 @@ import { Playlist } from 'src/models/playlist';
 @Injectable()
 export class PlaylistService {
   constructor(private dbHelper: DbHelper) {
-    const model  = this.dbHelper.db.getCollection('playlist');
-    if(!model){
-      this.dbHelper.db.addCollection('playlist');
-    }
+    this.dbHelper.onReady(() => {
+      const model = this.dbHelper.db.getCollection('playlist');
+      if (!model) {
+        this.dbHelper.db.addCollection('playlist');
+      }
+    });
   }
 
   getPlaylists(query): Playlist[] {
