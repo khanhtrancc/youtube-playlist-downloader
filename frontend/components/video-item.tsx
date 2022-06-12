@@ -1,7 +1,7 @@
 import { utils } from "../helpers/utils";
 import { Video } from "../models/video";
 
-function Videodata({ data }: { data: Video }) {
+function Videodata({ data, index }: { data: Video, index: number }) {
   let videoColor = "bg-secondary text-white ";
   let audioColor = "bg-secondary text-white ";
   switch (data.video_file.status) {
@@ -47,7 +47,7 @@ function Videodata({ data }: { data: Video }) {
         <div className="col-md-10">
           <div className="card-body">
             <h6 className="card-title">
-              {data.name}
+              {index} - {data.name}
               <small className="text-secondary"> ({data.id})</small>
             </h6>
             <div className="row">

@@ -273,8 +273,10 @@ const Home = ({ serverState }: { serverState: ServerState }) => {
                     }
                     return true;
                   })
-                  .map((item) => {
-                    return <VideoItem key={item.id} data={item} />;
+                  .map((item, index) => {
+                    return (
+                      <VideoItem key={item.id} index={index} data={item} />
+                    );
                   })}
               </div>
             </div>
