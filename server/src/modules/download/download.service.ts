@@ -16,7 +16,6 @@ export class DownloadService {
   private downloadStreams = {};
   private emitter = new EventEmitter();
   private maxThread = 10;
-  public isRunning = false;
 
   setMaxThread(thread) {
     this.maxThread = thread;
@@ -24,13 +23,6 @@ export class DownloadService {
 
   getMaxThread() {
     return this.maxThread;
-  }
-
-  changeRunningState(isRunning: boolean) {
-    if (this.isRunning !== isRunning) {
-      this.emitter.emit('state', isRunning);
-    }
-    this.isRunning = isRunning;
   }
 
   stopAllDownloading() {
@@ -46,7 +38,6 @@ export class DownloadService {
   }
 
   addVideo(video: Video) {
-    this.changeRunningState(true);
     if (this.videos.length >= this.maxThread) {
       return false;
     }

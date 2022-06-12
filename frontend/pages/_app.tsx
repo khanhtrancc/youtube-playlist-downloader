@@ -27,7 +27,7 @@ function MyApp({
     config.serverApi = state.serverAddress;
   }
 
-  return <Component {...pageProps} serverState={{}} />;
+  return <Component {...pageProps} initServerState={state} />;
 }
 
 MyApp.getInitialProps = async (appContext: AppContext) => {

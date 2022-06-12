@@ -17,8 +17,6 @@ export class EventsGateway {
 
   handleConnection(socket: Socket) {
     this.clients.push(socket);
-    console.log('Socket connections', this.clients.length);
-
     //Only keep 2 connection
     if (this.clients.length > 1) {
       const oldSocket = this.clients.shift();

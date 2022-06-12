@@ -17,9 +17,14 @@ function removePlaylist(id: string) {
   return handleResponse(axios.delete(api, { params: { id } }));
 }
 
-function exportData(playlist_id: string, type: string) {
+function exportData(
+  playlist_id: string,
+  start: number,
+  end: number,
+  type: string
+) {
   const api = `${config.serverApi}/api/playlist/export`;
-  return handleResponse(axios.post(api, { playlist_id, type }));
+  return handleResponse(axios.post(api, { playlist_id, type, start, end }));
 }
 
 function removeFile(playlist_id: string) {

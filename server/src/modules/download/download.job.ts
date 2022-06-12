@@ -4,6 +4,7 @@ import { config } from 'src/config';
 import { Video } from 'src/models/video';
 import { EventsGateway } from '../common/events.gateway';
 import { FileHelper } from '../common/file.helper';
+import { StateService } from '../state/state.service';
 import { VideoService } from '../video/video.service';
 import { DownloadService } from './download.service';
 
@@ -15,6 +16,7 @@ export class DownloadJob {
     private readonly downloadService: DownloadService,
     private readonly eventGateway: EventsGateway,
     private readonly fileHelper: FileHelper,
+    private readonly stateService: StateService,
   ) {
     this.downloadService.on('update', (videos) => {
       if (!videos || videos.length === 0) {
@@ -24,10 +26,6 @@ export class DownloadJob {
         this.videoService.updateDoc(video);
       });
       this.eventGateway.emit('progress', videos);
-    });
-    this.downloadService.on('state', (state) => {
-      console.log('Change download state', state);
-      this.eventGateway.emit('download-state', state);
     });
   }
 
@@ -44,16 +42,18 @@ export class DownloadJob {
     needDownloadVideos.reverse();
     if (needDownloadVideos.length > 0) {
       this.downloadService.addVideo(needDownloadVideos[0]);
-    } else if (
-      this.downloadService.isRunning &&
-      this.downloadService.getVideos().length === 0
-    ) {
+    } else if (this.downloadService.getVideos().length === 0) {
       //check finish
       const retryVideos: Video[] = this.videoService.where({
         'video_file.status': 'retry',
       });
       if (retryVideos.length === 0) {
-        this.downloadService.changeRunningState(false);
+        if (this.stateService.state.currentAction === 'downloading') {
+          this.stateService.changeState({
+            currentAction: 'none',
+          });
+          this.eventGateway.emit('message', 'Finished downloading videos');
+        }
       }
     }
   }
@@ -88,11 +88,17 @@ export class DownloadJob {
 
   @Timeout(1000)
   resetUnfinishedVideos() {
-    const videos = this.videoService.where({
-      'video_file.status': 'downloading',
-    });
-    console.log(`Found ${videos.length} unfinished videos. Reseting...`);
-    videos.forEach((item) => {
+    const allVideos = this.videoService.get({});
+
+    const videos = allVideos.filter(
+      (video) =>
+        video.video_file.status === 'downloading' ||
+        video.video_file.status === 'error' ||
+        video.video_file.status === 'retry' ||
+        video.video_file.status === 'waiting',
+    );
+
+    for (const item of videos) {
       const tmpBasePath = this.fileHelper.getPathOfFolder(
         item.playlist_id,
         'tmp',
@@ -101,8 +107,12 @@ export class DownloadJob {
       const tmpOutputPath = `${tmpBasePath}/${item.id}.mp4`;
       this.fileHelper.removeFileOrDirIfExisted(tmpOutputPath);
       item.video_file.status = 'none';
+      item.video_file.updated_at = Date.now();
       this.videoService.updateDoc(item);
-    });
+    }
+    console.log(
+      `Found ${videos.length} unfinished downloading videos. Reseting...`,
+    );
     this.isReady = true;
   }
 }

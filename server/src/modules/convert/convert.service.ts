@@ -14,14 +14,6 @@ export class ConvertService {
   private videos: Video[] = [];
   private emitter = new EventEmitter();
   private maxThread = 10;
-  public isRunning = false;
-
-  changeRunningState(isRunning: boolean) {
-    if (this.isRunning !== isRunning) {
-      this.emitter.emit('state', isRunning);
-    }
-    this.isRunning = isRunning;
-  }
 
   setMaxThread(thread) {
     this.maxThread = thread;
@@ -32,8 +24,6 @@ export class ConvertService {
   }
 
   addVideo(video: Video) {
-    this.changeRunningState(true);
-
     if (this.videos.length >= this.maxThread) {
       return false;
     }

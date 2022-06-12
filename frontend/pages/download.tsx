@@ -12,23 +12,16 @@ import VideoItem from "../components/video-item";
 import RunStatistic from "../components/run-status";
 import { ServerState } from "../models/server-state";
 
-const Home = ({ serverState }: { serverState: ServerState }) => {
-  type ModeType = "download" | "convert" | "none";
-  let initMode: ModeType =
-    serverState.currentAction === "converting"
-      ? "convert"
-      : serverState.currentAction === "downloading"
-      ? "download"
-      : "none";
+const Home = ({ initServerState }: { initServerState: ServerState }) => {
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
-  const [runningMode, setRunningMode] = useState<ModeType>(initMode);
+  const [serverState, setServerState] = useState<ServerState>(initServerState);
   const [search, setSearch] = useState<string>("");
   const [replace, setReplace] = useState<string>("");
   const [start, setStart] = useState<string>("0");
   const [end, setEnd] = useState<string>("0");
   const [thread, setThread] = useState<string>("20");
-  const [onlyDownload, setOnlyDownload] = useState(false);
+  const [showCurrentSession, setShowCurrentSession] = useState(false);
   const [downloadPaths, setDownloadPaths] = useState<string[]>([]);
 
   const router = useRouter();
@@ -69,34 +62,13 @@ const Home = ({ serverState }: { serverState: ServerState }) => {
       });
     });
 
-    socket.on("download-state", (isRunning) => {
-      console.log("Download state change", isRunning);
-      if (isRunning) {
-        toast.success("Download started");
-      } else {
-        toast.success("Download finished");
-        setRunningMode((oldMode) => {
-          if (oldMode === "download") {
-            return "none";
-          }
-          return oldMode;
-        });
-      }
+    socket.on("message", (message) => {
+      console.log("on message", message);
+      toast.success(message);
     });
 
-    socket.on("convert-state", (isRunning) => {
-      console.log("Convert state change", isRunning);
-      if (isRunning) {
-        toast.success("Convert started");
-      } else {
-        toast.success("Convert finished");
-        setRunningMode((oldMode) => {
-          if (oldMode === "convert") {
-            return "none";
-          }
-          return oldMode;
-        });
-      }
+    socket.on("state", (state: ServerState) => {
+      setServerState(state);
     });
 
     socket.on("export", (path) => {
@@ -210,10 +182,9 @@ const Home = ({ serverState }: { serverState: ServerState }) => {
       .then((data) => {
         if (data) {
           setVideos(data);
-          setRunningMode(action);
-          toast.success("Start download successfully!");
+          toast.success(`Start ${action}ing successfully!`);
         } else {
-          toast.error("Start download failure");
+          toast.error(`Start ${action}ing failure`);
         }
       });
   };
@@ -225,12 +196,12 @@ const Home = ({ serverState }: { serverState: ServerState }) => {
     videoApi
       .stop({
         playlist_id: playlistId,
-        action: runningMode === "convert" ? "convert" : "download",
+        action:
+          serverState.currentAction === "converting" ? "convert" : "download",
       })
       .then((data) => {
         if (data) {
           setVideos(data);
-          setRunningMode("none");
           toast.success("Stop successfully!");
         } else {
           toast.error("Stop failure");
@@ -238,17 +209,19 @@ const Home = ({ serverState }: { serverState: ServerState }) => {
       });
   };
 
-  const exportData = (type: "video" | "audio") => {
+  const exportData = (start: string, end: string, type: "video" | "audio") => {
     if (typeof playlistId !== "string") {
       return;
     }
-    playlistApi.exportData(playlistId, type).then((data) => {
-      if (data) {
-        toast.success("Export data successfully!");
-      } else {
-        toast.error("Export data failure");
-      }
-    });
+    playlistApi
+      .exportData(playlistId, parseInt(start), parseInt(end), type)
+      .then((data) => {
+        if (data) {
+          toast.success("Export data successfully!");
+        } else {
+          toast.error("Export data failure");
+        }
+      });
   };
 
   return (
@@ -256,83 +229,69 @@ const Home = ({ serverState }: { serverState: ServerState }) => {
       <div className="row mt-3">
         <div className="col-12 col-md-8">
           <div className="card">
-            <div className="card-header text-center">{playlist?.name}</div>
+            <div className="card-header">
+              <div className="col-12 row">
+                <div className="col-8">
+                  <h6>{playlist?.name}</h6>
+                </div>
+                <div className="col-4">
+                  <div className="form-check form-switch">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      name="flexRadioDefault"
+                      disabled={serverState.currentAction === "none"}
+                      id="flexRadioDefault1"
+                      checked={showCurrentSession}
+                      onChange={(event) => {
+                        setShowCurrentSession(event.target.checked);
+                      }}
+                    />
+                    <label
+                      className="form-check-label"
+                      htmlFor="flexRadioDefault1"
+                    >
+                      Current session
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div className="card-body mx-0 px-0">
               <div
                 className=" overflow-scroll px-3"
                 style={{ maxHeight: "80vh" }}
               >
-                {videos
-                  .filter((item) => {
-                    const statusObj = item.video_file;
-                    if (onlyDownload) {
-                      return (
-                        statusObj.status !== "none" &&
-                        statusObj.status !== "downloaded"
-                      );
+                {videos.map((item, index) => {
+                  if (showCurrentSession) {
+                    if (
+                      !(
+                        index >= serverState.startIndex &&
+                        index <= serverState.endIndex
+                      )
+                    ) {
+                      return;
                     }
-                    return true;
-                  })
-                  .map((item, index) => {
-                    return (
-                      <VideoItem key={item.id} index={index} data={item} />
-                    );
-                  })}
+                  }
+                  return <VideoItem key={item.id} index={index} data={item} />;
+                })}
               </div>
             </div>
           </div>
         </div>
-        <div className="col-12 col-md-4">
+        <div className="col-12 col-md-4 left-download-panel">
           <RunStatistic
-            type={runningMode === "convert" ? "convert" : "download"}
             videos={videos}
-            startIndex={parseInt(start)}
-            endIndex={parseInt(end)}
-            isRunning={runningMode !== "none"}
+            serverState={serverState}
             onStop={stopAction}
             onSync={syncWithFile}
             onRemoveFile={removeFile}
           />
-          <div className="card mt-3 ">
-            {/* <div className="card-header text-center">Tools</div> */}
-            <div className="card-body">
-              <div className="form-check">
-                <input
-                  className="form-check-input"
-                  type="radio"
-                  name="flexRadioDefault"
-                  id="flexRadioDefault1"
-                  checked={onlyDownload}
-                  onChange={(event) => {
-                    setOnlyDownload(event.target.checked);
-                  }}
-                />
-                <label className="form-check-label" htmlFor="flexRadioDefault1">
-                  Show handling videos
-                </label>
-              </div>
-              <div className="form-check">
-                <input
-                  className="form-check-input"
-                  type="radio"
-                  name="flexRadioDefault"
-                  id="flexRadioDefault2"
-                  checked={!onlyDownload}
-                  onChange={(event) => {
-                    setOnlyDownload(false);
-                  }}
-                />
-                <label className="form-check-label" htmlFor="flexRadioDefault2">
-                  Show all videos
-                </label>
-              </div>
-            </div>
-          </div>
 
-          <div className="card mt-3">
-            <div className="card-header text-center">Action</div>
-            <div className="card-body">
-              {runningMode === "none" && (
+          {serverState.currentAction === "none" && (
+            <div className="card mt-3">
+              <div className="card-header text-center">Action</div>
+              <div className="card-body">
                 <form className=" mt-2">
                   <div className="row">
                     <label
@@ -412,45 +371,44 @@ const Home = ({ serverState }: { serverState: ServerState }) => {
                       </button>
                     </div>
                   </div>
+                  <div className="row mx-0 mt-3">
+                    <div className="col-6 row mx-0">
+                      <button
+                        type="submit"
+                        className="btn btn-success btn-sm"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          exportData(start, end, "video");
+                        }}
+                      >
+                        Export video
+                      </button>
+                    </div>
+                    <div className="col-6 row mx-0">
+                      <button
+                        type="submit"
+                        className="btn btn-success btn-sm"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          exportData(start, end, "audio");
+                        }}
+                      >
+                        Export audio
+                      </button>
+                    </div>
+                  </div>
                 </form>
-              )}
 
-              <div className="row">
-                <div className="col-6">
-                  <a
-                    href="#"
-                    style={{ fontSize: "12px" }}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      exportData("video");
-                    }}
-                  >
-                    Export videos
-                  </a>
-                </div>
-                <div className="col-6">
-                  <a
-                    href="#"
-                    style={{ fontSize: "12px" }}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      exportData("audio");
-                    }}
-                  >
-                    Export audio
-                  </a>
-                </div>
+                {downloadPaths.map((link) => (
+                  <div key={"path" + link} className="col-12">
+                    <a href={link} style={{ fontSize: "12px" }}>
+                      {link}
+                    </a>
+                  </div>
+                ))}
               </div>
-
-              {downloadPaths.map((link) => (
-                <div key={"path" + link} className="col-12">
-                  <a href={link} style={{ fontSize: "12px" }}>
-                    {link}
-                  </a>
-                </div>
-              ))}
             </div>
-          </div>
+          )}
 
           <div className="card mb-3 mt-3">
             <div className="card-header text-center">Name Replace Tool</div>

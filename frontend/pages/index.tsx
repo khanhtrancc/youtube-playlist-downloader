@@ -7,7 +7,7 @@ import Link from "next/link";
 import { config } from "../config";
 import { ServerState } from "../models/server-state";
 
-const Home = ({ serverState }: { serverState: ServerState }) => {
+const Home = ({ initServerState }: { initServerState: ServerState }) => {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [id, setId] = useState<string>("");
 
@@ -53,7 +53,7 @@ const Home = ({ serverState }: { serverState: ServerState }) => {
                   (item.downloaded_video / (item.total_video || 1)) * 100
                 );
                 return (
-                  <Link href={`/download?playlistId=${item.id}`}>
+                  <Link href={`/download?playlistId=${item.id}`} key={item.id}>
                     <div className="card mb-3" role="button">
                       <div className="row g-0">
                         <div className="col-md-4">

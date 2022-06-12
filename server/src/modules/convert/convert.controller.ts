@@ -6,6 +6,7 @@ import { numberUtils } from 'src/helpers/number';
 import { VideoService } from '../video/video.service';
 import { FileHelper } from '../common/file.helper';
 import { ConvertService } from './convert.service';
+import { StateService } from '../state/state.service';
 
 @Controller('/api/convert')
 export class ConvertController {
@@ -14,6 +15,7 @@ export class ConvertController {
     private readonly convertService: ConvertService,
     private readonly playlistService: PlaylistService,
     private readonly fileHelper: FileHelper,
+    private readonly stateService: StateService,
   ) {}
 
   @Post('/start')
@@ -27,6 +29,13 @@ export class ConvertController {
     ) {
       return ResponseFactory.badRequest(
         'Missing start, end, thread or playlist_id',
+      );
+    }
+
+    if (!this.stateService.isReadyToNewAction()) {
+      return ResponseFactory.badRequest(
+        'The server is doing other action: ' +
+          this.stateService.state.currentAction,
       );
     }
 
@@ -60,6 +69,13 @@ export class ConvertController {
       this.videoService.updateDoc(video);
     }
 
+    this.stateService.changeState({
+      currentAction: 'converting',
+      startIndex,
+      endIndex,
+      handlingPlaylistId: playlist_id,
+    });
+
     const newList = this.videoService.get({ playlist_id });
     return ResponseFactory.success(newList);
   }
@@ -69,6 +85,13 @@ export class ConvertController {
     const { playlist_id } = req.body;
     if (typeof playlist_id !== 'string') {
       return ResponseFactory.badRequest('Missing  playlist_id');
+    }
+
+    if (this.stateService.state.currentAction !== 'converting') {
+      return ResponseFactory.badRequest(
+        'The server is doing other action: ' +
+          this.stateService.state.currentAction,
+      );
     }
 
     const videos = this.videoService.where({ playlist_id });
@@ -85,6 +108,10 @@ export class ConvertController {
         this.videoService.updateDoc(video);
       }
     }
+
+    this.stateService.changeState({
+      currentAction: 'none',
+    });
 
     const newList = this.videoService.get({ playlist_id });
     return ResponseFactory.success(newList);

@@ -12,7 +12,6 @@ export const MainLayout = ({
   serverIp: string;
   children: ReactElement;
 }) => {
-
   useEffect(() => {
     config.isBrowser ? require("bootstrap/dist/js/bootstrap") : null;
   }, []);
@@ -34,11 +33,11 @@ export const MainLayout = ({
         <div className="container-fluid">
           <a className="navbar-brand text-logo" href="/">
             <img
-              src="/docs/5.0/assets/brand/bootstrap-logo.svg"
+              src="/yt-logo.png"
               alt=""
               width="30"
               height="24"
-              className="d-inline-block align-text-top"
+              className="d-inline-block align-text-top mx-3"
             />
             Youtube Download Bot
           </a>
@@ -49,7 +48,7 @@ export const MainLayout = ({
 
       <footer className="footer">
         <a target="_blank" rel="noopener noreferrer">
-          Powered by Youtube Download Bot. Server Ip: {serverIp}
+          Powered by Youtube Download Bot. Server: {serverIp}
         </a>
       </footer>
       <ToastContainer />
