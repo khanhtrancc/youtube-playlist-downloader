@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Head from "next/head";
 import type { ReactElement } from "react";
 import { useEffect, useState } from "react";
@@ -34,7 +33,7 @@ export const MainLayout = ({
       >
         <div className="container-fluid">
           <a className="navbar-brand text-logo" href="/">
-            <Image
+            <img
               src="/docs/5.0/assets/brand/bootstrap-logo.svg"
               alt=""
               width="30"

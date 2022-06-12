@@ -104,7 +104,7 @@ export class ConvertService {
         .on('end', () => {
           fs.copyFile(
             tmpOutputPath,
-            `${audioBasePath}/${video.id}.mp4`,
+            `${audioBasePath}/${video.id}.mp3`,
             (err) => {
               this.fileHelper.removeFileOrDirIfExisted(tmpOutputPath);
 

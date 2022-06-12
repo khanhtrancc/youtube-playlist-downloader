@@ -6,12 +6,14 @@ import { Injectable } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { FileHelper } from 'src/modules/common/file.helper';
 import { config } from 'src/config';
+import internal from 'stream';
 
 @Injectable()
 export class DownloadService {
   constructor(private readonly fileHelper: FileHelper) {}
 
   private videos: Video[] = [];
+  private downloadStreams = {};
   private emitter = new EventEmitter();
   private maxThread = 10;
   public isRunning = false;
@@ -29,6 +31,18 @@ export class DownloadService {
       this.emitter.emit('state', isRunning);
     }
     this.isRunning = isRunning;
+  }
+
+  stopAllDownloading() {
+    Object.keys(this.downloadStreams).forEach((key) => {
+      try {
+        if (this.downloadStreams[key] && !this.downloadStreams[key].destroyed) {
+          this.downloadStreams[key].destroy();
+        }
+      } catch (err) {
+        console.log('Destroy stream error', key);
+      }
+    });
   }
 
   addVideo(video: Video) {
@@ -99,6 +113,11 @@ export class DownloadService {
       statusObj.description = '' + err;
       statusObj.retry_count++;
       this.emitter.emit('update', [video]);
+      const downloadStream: internal.Readable = this.downloadStreams[video.id];
+      if (downloadStream && !downloadStream.destroyed) {
+        downloadStream.destroy();
+      }
+      this.downloadStreams[video.id] = null;
       fileStream.end();
     });
 
@@ -131,6 +150,9 @@ export class DownloadService {
         }
         statusObj.status = 'downloaded';
         statusObj.updated_at = Date.now();
+
+        this.downloadStreams[video.id] = null;
+
         this.removeVideo(video);
         this.emitter.emit('update', [video]);
       });
@@ -148,8 +170,13 @@ export class DownloadService {
       ).toLocaleString()}`;
       statusObj.updated_at = Date.now();
       this.removeVideo(video);
+
+      this.downloadStreams[video.id] = null;
+
       this.emitter.emit('update', [video]);
     });
+
+    this.downloadStreams[video.id] = downloader;
   }
 
   @Cron('* * * * * *')

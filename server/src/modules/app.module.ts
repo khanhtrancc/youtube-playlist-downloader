@@ -7,19 +7,20 @@ import { PlaylistModule } from './playlist/playlist.module';
 import { VideoModule } from './video/video.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
-import { ConfigModule } from './config/config.module';
+import { StateModule } from './state/state.module';
 
 @Module({
   imports: [
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), `./public/`),
+      renderPath: "/public"
     }),
     PlaylistModule,
     VideoModule,
     CommonModule,
     DownloadModule,
     ConvertModule,
-    ConfigModule,
+    StateModule,
     ScheduleModule.forRoot(),
   ],
 })

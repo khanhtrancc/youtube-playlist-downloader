@@ -1,25 +1,15 @@
 import { useEffect, useState } from "react";
-import type { NextPage } from "next";
-import Head from "next/head";
-import Image from "next/image";
 import { MainLayout } from "../components/layout";
-import { playlistApi } from "../api/playlist";
-import { ToastContainer, toast } from "react-toastify";
+import { playlistApi } from "../api/playlist.api";
+import { toast } from "react-toastify";
 import { Playlist } from "../models/playlist";
 import Link from "next/link";
 import { config } from "../config";
-import Router from "next/router";
-import { utils } from "../helpers/utils";
-import { configApi } from "../api/config";
+import { ServerState } from "../models/server-state";
 
-const Home = ({ serverIp }: { serverIp: string | null }) => {
+const Home = ({ serverState }: { serverState: ServerState }) => {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [id, setId] = useState<string>("");
-
-  if (serverIp) {
-    config.api = serverIp;
-    config.ws = serverIp;
-  }
 
   useEffect(() => {
     playlistApi.getPlaylists().then((data) => {
@@ -52,7 +42,7 @@ const Home = ({ serverIp }: { serverIp: string | null }) => {
   };
 
   return (
-    <MainLayout serverIp={config.api}>
+    <MainLayout serverIp={config.serverApi}>
       <div className="row mt-3">
         <div className="col-12 col-md-8">
           <div className="card">
@@ -156,15 +146,5 @@ const Home = ({ serverIp }: { serverIp: string | null }) => {
     </MainLayout>
   );
 };
-
-export async function getServerSideProps() {
-  const config = await configApi.getConfig();
-  const serverIp = config ? config.serverAddress : null;
-  return {
-    props: {
-      serverIp,
-    },
-  };
-}
 
 export default Home;

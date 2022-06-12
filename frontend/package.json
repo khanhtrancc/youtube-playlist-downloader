@@ -6,7 +6,8 @@
     "dev": "PORT=4000 next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "export": "next build && next export"
   },
   "dependencies": {
     "@popperjs/core": "^2.11.5",

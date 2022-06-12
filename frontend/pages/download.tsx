@@ -1,36 +1,25 @@
-import type { NextPage } from "next";
-import Head from "next/head";
-import Image from "next/image";
-import Router, { useRouter } from "next/router";
+import { useRouter } from "next/router";
 import { useState, useEffect } from "react";
-import { playlistApi } from "../api/playlist";
+import { playlistApi } from "../api/playlist.api";
 import { MainLayout } from "../components/layout";
 import { Playlist } from "../models/playlist";
 import { Video } from "../models/video";
 import { toast } from "react-toastify";
-import { videoApi } from "../api/video";
-import { utils } from "../helpers/utils";
+import { videoApi } from "../api/video.api";
 import { config } from "../config";
 import { io } from "socket.io-client";
 import VideoItem from "../components/video-item";
 import RunStatistic from "../components/run-status";
-import { configApi } from "../api/config";
+import { ServerState } from "../models/server-state";
 
-const Home = ({
-  serverIp,
-  isDownloading,
-  isConverting,
-}: {
-  serverIp: string | null;
-  isDownloading: boolean;
-  isConverting: boolean;
-}) => {
+const Home = ({ serverState }: { serverState: ServerState }) => {
   type ModeType = "download" | "convert" | "none";
-  let initMode: ModeType = isConverting
-    ? "convert"
-    : isDownloading
-    ? "download"
-    : "none";
+  let initMode: ModeType =
+    serverState.currentAction === "converting"
+      ? "convert"
+      : serverState.currentAction === "downloading"
+      ? "download"
+      : "none";
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
   const [videos, setVideos] = useState<Video[]>([]);
   const [runningMode, setRunningMode] = useState<ModeType>(initMode);
@@ -42,11 +31,6 @@ const Home = ({
   const [onlyDownload, setOnlyDownload] = useState(false);
   const [downloadPaths, setDownloadPaths] = useState<string[]>([]);
 
-  if (serverIp) {
-    config.api = serverIp;
-    config.ws = serverIp;
-  }
-
   const router = useRouter();
   const { playlistId } = router.query;
 
@@ -57,15 +41,14 @@ const Home = ({
     getPlaylistInfo();
     getVideos(playlistId);
 
-    const socket = io(config.ws);
+    const socket = io(config.serverApi);
 
     // Socket connection established, port is open
     socket.on("connect", function () {
-      console.log("Connected to ws: ", config.ws);
-      getConfig();
+      console.log("Connected to ws: ", config.serverApi);
     });
     socket.on("disconnect", function () {
-      console.log("Disconnected to ws: ", config.ws);
+      console.log("Disconnected to ws: ", config.serverApi);
       // toast.warning("Disconnected to server. Reloading ...");
     });
     socket.on("progress", (updatedData) => {
@@ -160,20 +143,6 @@ const Home = ({
         });
       } else {
         toast.error("Get videos failure");
-      }
-    });
-  };
-
-  const getConfig = () => {
-    console.log("Call get config");
-    configApi.getConfig().then((data) => {
-      console.log("Response get config", data);
-      if (data?.isDownloading) {
-        setRunningMode("download");
-      } else if (data?.isConverting) {
-        setRunningMode("convert");
-      } else {
-        setRunningMode("none");
       }
     });
   };
@@ -283,7 +252,7 @@ const Home = ({
   };
 
   return (
-    <MainLayout serverIp={config.api}>
+    <MainLayout serverIp={config.serverApi}>
       <div className="row mt-3">
         <div className="col-12 col-md-8">
           <div className="card">
@@ -470,10 +439,12 @@ const Home = ({
                   </a>
                 </div>
               </div>
-              
+
               {downloadPaths.map((link) => (
                 <div key={"path" + link} className="col-12">
-                  <a href={link} style={{fontSize: '12px'}}>{link}</a>
+                  <a href={link} style={{ fontSize: "12px" }}>
+                    {link}
+                  </a>
                 </div>
               ))}
             </div>
@@ -535,17 +506,5 @@ const Home = ({
     </MainLayout>
   );
 };
-
-export async function getServerSideProps() {
-  const config = await configApi.getConfig();
-  console.log("Get server config", config);
-  return {
-    props: {
-      serverIp: config?.serverAddress || null,
-      isDownloading: config?.isDownloading || false,
-      isConverting: config?.isConverting || false,
-    },
-  };
-}
 
 export default Home;

@@ -9,6 +9,7 @@ import { FileHelper } from 'src/modules/common/file.helper';
 import * as fs from 'fs';
 import { EventsGateway } from '../common/events.gateway';
 import { NetworkHelper } from '../common/network.helper';
+import { StateService } from '../state/state.service';
 
 @Controller('/api/playlist')
 export class PlaylistController {
@@ -18,6 +19,7 @@ export class PlaylistController {
     private readonly fileHelper: FileHelper,
     private readonly eventGateway: EventsGateway,
     private readonly networkHelper: NetworkHelper,
+    private readonly stateService: StateService,
   ) {}
 
   @Get()
@@ -126,6 +128,15 @@ export class PlaylistController {
       return ResponseFactory.badRequest('Missing  playlist_id');
     }
 
+    if (!this.stateService.isReadyToNewAction()) {
+      return ResponseFactory.badRequest(
+        'Cannot export when server does other action: ' +
+          this.stateService.state.currentAction,
+      );
+    }
+
+    this.stateService.changeState({currentAction: 'exporting'});
+
     const videos = this.videoService.where({ playlist_id });
     videos.reverse();
     const publicFolderPath = this.fileHelper.getPathOfFolder(
@@ -133,14 +144,8 @@ export class PlaylistController {
       'public',
     );
     const basePath = `${publicFolderPath}/${type}`;
-
     const zipPath = `${publicFolderPath}/${type}.zip`;
-    const netAdds = this.networkHelper.getLocalAddress();
-    if (netAdds.length === 0) {
-      return ResponseFactory.serverError('No server address found');
-    }
-    console.log('Ip', netAdds);
-    const serverAdd = netAdds[0];
+    const serverAdd = this.stateService.state.serverAddress;
 
     const copyFile = async () => {
       console.log('Start remove old file', basePath);
@@ -181,7 +186,7 @@ export class PlaylistController {
       }
     };
 
-    this.eventGateway.emit('export', "Test link");
+    this.eventGateway.emit('export', 'Test link');
     console.log('START COPY files');
     copyFile().then(() => {
       const folderLink = `http://${serverAdd}${this.fileHelper.getRelativeLinkForPublicPath(
