@@ -6,7 +6,7 @@ import { PlaylistController } from './playlist.controller';
 import { PlaylistService } from './playlist.service';
 
 @Module({
-  imports: [CommonModule, StateModule , VideoModule],
+  imports: [CommonModule, StateModule, VideoModule],
   controllers: [PlaylistController],
   providers: [PlaylistService],
   exports: [PlaylistService],

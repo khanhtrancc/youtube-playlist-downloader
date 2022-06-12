@@ -9,6 +9,8 @@ import { ConvertService } from './convert.service';
 
 @Injectable()
 export class ConvertJob {
+  private isReady = false;
+
   constructor(
     private readonly videoService: VideoService,
     private readonly convertService: ConvertService,
@@ -33,8 +35,12 @@ export class ConvertJob {
 
   @Cron('* * * * * *')
   findNeedDownloadVideo() {
+    if (!this.isReady) {
+      return;
+    }
+
     //get video has waiting status and start convert
-    let needConvertVideos: Video[] = this.videoService.where({
+    const needConvertVideos: Video[] = this.videoService.where({
       'audio_file.status': 'waiting',
     });
 
@@ -57,7 +63,11 @@ export class ConvertJob {
 
   @Interval(config.retryDelayTime)
   checkRetry() {
-    let retryVideos: Video[] = this.videoService.where({
+    if (!this.isReady) {
+      return;
+    }
+
+    const retryVideos: Video[] = this.videoService.where({
       'audio_file.status': 'retry',
     });
 
@@ -96,5 +106,6 @@ export class ConvertJob {
       item.audio_file.status = 'none';
       this.videoService.updateDoc(item);
     });
+    this.isReady = true;
   }
 }

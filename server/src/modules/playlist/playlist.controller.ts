@@ -135,7 +135,7 @@ export class PlaylistController {
       );
     }
 
-    this.stateService.changeState({currentAction: 'exporting'});
+    this.stateService.changeState({ currentAction: 'exporting' });
 
     const videos = this.videoService.where({ playlist_id });
     videos.reverse();

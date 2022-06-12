@@ -13,7 +13,7 @@ import { StateModule } from './state/state.module';
   imports: [
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), `./public/`),
-      renderPath: "/public"
+      renderPath: '/public',
     }),
     PlaylistModule,
     VideoModule,

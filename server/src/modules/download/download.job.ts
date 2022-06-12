@@ -9,6 +9,7 @@ import { DownloadService } from './download.service';
 
 @Injectable()
 export class DownloadJob {
+  private isReady = false;
   constructor(
     private readonly videoService: VideoService,
     private readonly downloadService: DownloadService,
@@ -32,8 +33,11 @@ export class DownloadJob {
 
   @Cron('* * * * * *')
   findNeedDownloadVideo() {
+    if (!this.isReady) {
+      return;
+    }
     //get video has waiting status and start download
-    let needDownloadVideos: Video[] = this.videoService.where({
+    const needDownloadVideos: Video[] = this.videoService.where({
       'video_file.status': 'waiting',
     });
 
@@ -56,6 +60,10 @@ export class DownloadJob {
 
   @Interval(config.retryDelayTime)
   checkRetry() {
+    if (!this.isReady) {
+      return;
+    }
+
     const retryVideos: Video[] = this.videoService.where({
       'video_file.status': 'retry',
     });
@@ -95,5 +103,6 @@ export class DownloadJob {
       item.video_file.status = 'none';
       this.videoService.updateDoc(item);
     });
+    this.isReady = true;
   }
 }

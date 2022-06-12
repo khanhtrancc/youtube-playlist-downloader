@@ -109,7 +109,7 @@ export class YoutubeApi {
             error_video: 0,
             total_video: 0,
             downloaded_video: 0,
-            status: 'active'
+            status: 'active',
           };
         }
       }

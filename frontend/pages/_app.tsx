@@ -15,33 +15,31 @@ function MyApp({
   ...otherProps
 }: AppProps & { serverState: ServerState }) {
   // console.log("Page props", otherProps);
-  // if (!otherProps.serverState) {
-  //   return (
-  //     <MainLayout serverIp={config.serverApi}>
-  //       <ServerError />
-  //     </MainLayout>
-  //   );
-  // }
+  if (!otherProps.serverState) {
+    return (
+      <MainLayout serverIp={config.serverApi}>
+        <ServerError />
+      </MainLayout>
+    );
+  }
   const state: ServerState = otherProps.serverState;
   if (state) {
     config.serverApi = state.serverAddress;
   }
 
-  console.log("Config", config);
-
   return <Component {...pageProps} serverState={{}} />;
 }
 
-// MyApp.getInitialProps = async (appContext: AppContext) => {
-//   const appProps = await App.getInitialProps(appContext);
+MyApp.getInitialProps = async (appContext: AppContext) => {
+  const appProps = await App.getInitialProps(appContext);
 
-//   console.log("Get state of server in _app.tsx");
-//   const serverState = await configApi.getServerState();
-//   console.log("Get state response: ", serverState);
-//   return {
-//     ...appProps,
-//     serverState,
-//   };
-// };
+  console.log("Get state of server in _app.tsx");
+  const serverState = await configApi.getServerState();
+  console.log("Get state response: ", serverState);
+  return {
+    ...appProps,
+    serverState,
+  };
+};
 
 export default MyApp;
