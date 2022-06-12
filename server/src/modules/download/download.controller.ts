@@ -94,17 +94,20 @@ export class DownloadController {
       );
     }
 
+    this.downloadService.stopAllDownloading();
     const videos = this.videoService.where({ playlist_id });
     // change status of videos
     for (let i = 0; i < videos.length; i++) {
       const video = videos[i];
       if (
         video.video_file.status === 'waiting' ||
-        video.audio_file.status === 'retry' ||
+        video.video_file.status === 'retry' ||
         (video.video_file.status === 'downloading' &&
           !this.downloadService.hasVideo(video))
       ) {
         video.video_file.status = 'none';
+        video.video_file.description = 'Stop by user';
+        video.video_file.updated_at = Date.now();
         this.videoService.updateDoc(video);
       }
     }

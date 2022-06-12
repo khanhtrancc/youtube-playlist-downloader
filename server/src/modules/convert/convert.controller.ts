@@ -105,6 +105,8 @@ export class ConvertController {
           !this.convertService.hasVideo(video))
       ) {
         video.audio_file.status = 'none';
+        video.audio_file.updated_at = Date.now();
+        video.audio_file.description = 'Stop by user';
         this.videoService.updateDoc(video);
       }
     }

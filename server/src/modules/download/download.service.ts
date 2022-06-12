@@ -35,6 +35,7 @@ export class DownloadService {
         console.log('Destroy stream error', key);
       }
     });
+    this.videos.splice(0);
   }
 
   addVideo(video: Video) {
@@ -150,6 +151,7 @@ export class DownloadService {
     });
 
     downloader.on('error', (err) => {
+      console.log('err', err);
       this.fileHelper.removeFileOrDirIfExisted(tmpOutputPath);
 
       statusObj.status = 'retry';
