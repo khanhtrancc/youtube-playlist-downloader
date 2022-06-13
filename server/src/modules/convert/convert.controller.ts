@@ -57,10 +57,12 @@ export class ConvertController {
     ) {
       const video = videos[i];
       const statusObj = video.audio_file;
-      if (statusObj.status === 'converted') {
+      if (statusObj.status === 'converting') {
         if (this.convertService.hasVideo(video)) {
           continue;
         }
+      } else if (statusObj.status === 'converted') {
+        continue;
       }
 
       statusObj.status = 'waiting';

@@ -10,6 +10,7 @@ import * as fs from 'fs';
 import { EventsGateway } from '../common/events.gateway';
 import { NetworkHelper } from '../common/network.helper';
 import { StateService } from '../state/state.service';
+import { numberUtils } from 'src/helpers/number';
 
 @Controller('/api/playlist')
 export class PlaylistController {
@@ -123,22 +124,35 @@ export class PlaylistController {
 
   @Post('/export')
   async export(@Req() req: Request) {
-    const { playlist_id, type } = req.body;
-    if (typeof playlist_id !== 'string') {
-      return ResponseFactory.badRequest('Missing  playlist_id');
+    const { end, start, playlist_id, type } = req.body;
+    if (
+      typeof start !== 'string' ||
+      typeof end !== 'string' ||
+      typeof type !== 'string' ||
+      typeof playlist_id !== 'string'
+    ) {
+      return ResponseFactory.badRequest(
+        'Missing start, end, thread or playlist_id',
+      );
     }
 
     if (!this.stateService.isReadyToNewAction()) {
       return ResponseFactory.badRequest(
-        'Cannot export when server does other action: ' +
+        'The server is doing other action: ' +
           this.stateService.state.currentAction,
       );
     }
 
-    this.stateService.changeState({ currentAction: 'exporting' });
+    const videos = this.videoService.get({ playlist_id });
+    const startIndex = numberUtils.parseInt(start, 0);
+    const endIndex = numberUtils.parseInt(end, videos.length);
 
-    const videos = this.videoService.where({ playlist_id });
-    videos.reverse();
+    this.stateService.changeState({
+      currentAction: 'exporting',
+      startIndex,
+      endIndex,
+    });
+
     const publicFolderPath = this.fileHelper.getPathOfFolder(
       playlist_id,
       'public',
@@ -161,7 +175,9 @@ export class PlaylistController {
         playlist_id,
         'video',
       );
-      for (let i = 0; i < videos.length; i++) {
+      const indexLength = ('' + videos.length).length;
+      for (let i = startIndex; i <= endIndex && i < videos.length; i++) {
+        this.eventGateway.emit('export-progress', i);
         const video = videos[i];
         let filePath;
         if (type === 'audio' && video.audio_file.status === 'converted') {
@@ -173,9 +189,11 @@ export class PlaylistController {
           filePath = `${videoBasePath}/${video.id}.mp4`;
         }
 
+        // console.log("Path",type, filePath, !filePath?video.audio_file: video.video_file)
+
         if (filePath) {
           try {
-            const newPath = `${basePath}/${('000' + i).slice(-3)}-${
+            const newPath = `${basePath}/${('00000' + i).slice(-indexLength)}-${
               video.name
             }.${type === 'video' ? 'mp4' : 'mp3'}`;
             fs.copyFileSync(filePath, newPath);
@@ -186,28 +204,33 @@ export class PlaylistController {
       }
     };
 
-    this.eventGateway.emit('export', 'Test link');
     console.log('START COPY files');
     copyFile().then(() => {
-      const folderLink = `http://${serverAdd}${this.fileHelper.getRelativeLinkForPublicPath(
-        basePath,
-      )}`;
-      this.eventGateway.emit('export', folderLink);
+      this.eventGateway.emit('message', 'Export successfully!');
+      this.stateService.changeState({
+        currentAction: 'none',
+        startIndex,
+        endIndex,
+      });
+      // const folderLink = `http://${serverAdd}${this.fileHelper.getRelativeLinkForPublicPath(
+      //   basePath,
+      // )}`;
+      // this.eventGateway.emit('export', folderLink);
 
-      console.group('Copy success', folderLink);
-      this.fileHelper
-        .zipFolder(basePath, zipPath)
-        .then(() => {
-          const zipLink = `http://${serverAdd}${this.fileHelper.getRelativeLinkForPublicPath(
-            zipPath,
-          )}`;
-          console.log('Zip success', zipLink);
+      // console.group('Copy success', folderLink);
+      // this.fileHelper
+      //   .zipFolder(basePath, zipPath)
+      //   .then(() => {
+      //     const zipLink = `http://${serverAdd}${this.fileHelper.getRelativeLinkForPublicPath(
+      //       zipPath,
+      //     )}`;
+      //     console.log('Zip success', zipLink);
 
-          this.eventGateway.emit('export-zip', zipLink);
-        })
-        .catch((err) => {
-          console.log('Zip error', err);
-        });
+      //     this.eventGateway.emit('export-zip', zipLink);
+      //   })
+      //   .catch((err) => {
+      //     console.log('Zip error', err);
+      //   });
     });
 
     console.log('Finish copy file.Response export');

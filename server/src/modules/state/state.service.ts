@@ -12,6 +12,7 @@ export class StateService {
     currentAction: 'none',
     startIndex: 0,
     endIndex: 0,
+    progressRate: 0,
     serverAddress: null,
     handlingPlaylistId: null,
   };
@@ -36,6 +37,7 @@ export class StateService {
     currentAction?: ServerActionType;
     startIndex?: number;
     endIndex?: number;
+    progressRate?: number;
     serverAddress?: string | null;
     handlingPlaylistId?: string | null;
   }) {

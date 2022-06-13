@@ -71,13 +71,8 @@ const Home = ({ initServerState }: { initServerState: ServerState }) => {
       setServerState(state);
     });
 
-    socket.on("export", (path) => {
-      toast.success("Export data success: " + path);
-      console.log("Path", path);
-      setDownloadPaths((oldPath) => {
-        oldPath.push(path);
-        return [...oldPath];
-      });
+    socket.on("export-progress", (index) => {
+      console.log("Export index", index);
     });
 
     socket.on("export-zip", (path) => {
@@ -214,7 +209,7 @@ const Home = ({ initServerState }: { initServerState: ServerState }) => {
       return;
     }
     playlistApi
-      .exportData(playlistId, parseInt(start), parseInt(end), type)
+      .exportData(playlistId, start, end, type)
       .then((data) => {
         if (data) {
           toast.success("Export data successfully!");

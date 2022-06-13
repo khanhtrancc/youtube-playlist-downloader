@@ -19,8 +19,8 @@ function removePlaylist(id: string) {
 
 function exportData(
   playlist_id: string,
-  start: number,
-  end: number,
+  start: string,
+  end: string,
   type: string
 ) {
   const api = `${config.serverApi}/api/playlist/export`;
