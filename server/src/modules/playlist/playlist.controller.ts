@@ -11,6 +11,7 @@ import { EventsGateway } from '../common/events.gateway';
 import { NetworkHelper } from '../common/network.helper';
 import { StateService } from '../state/state.service';
 import { numberUtils } from 'src/helpers/number';
+import { Playlist } from 'src/models/playlist';
 
 @Controller('/api/playlist')
 export class PlaylistController {
@@ -42,14 +43,22 @@ export class PlaylistController {
     }
 
     const youtubeApi = new YoutubeApi(config.googleApiAccessToken);
-    const playlist = await youtubeApi.getPlaylistInfo(id);
+    let playlist = await youtubeApi.getPlaylistInfo(id);
     if (!playlist) {
-      return ResponseFactory.badRequest('Playlist Id (id) invalid');
+      // Add custom playlist
+      playlist = {
+        id: 'custom-' + Date.now(),
+        name: 'Custom: ' + id,
+        total_video: 0,
+        downloaded_video: 0,
+        error_video: 0,
+        status: 'active',
+      };
+    } else {
+      const videos = await youtubeApi.getVideosOfPlaylist(id);
+      this.videoService.add(videos);
+      playlist.total_video = videos.length;
     }
-
-    const videos = await youtubeApi.getVideosOfPlaylist(id);
-    this.videoService.add(videos);
-    playlist.total_video = videos.length;
 
     this.playlistService.addPlaylist(playlist);
     this.fileHelper.createPlaylistFolderIfNeed(playlist.id);

@@ -17,6 +17,7 @@ const Home = ({ initServerState }: { initServerState: ServerState }) => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [serverState, setServerState] = useState<ServerState>(initServerState);
   const [search, setSearch] = useState<string>("");
+  const [newVideoUrl, setNewVideoUrl] = useState<string>("");
   const [replace, setReplace] = useState<string>("");
   const [start, setStart] = useState<string>("0");
   const [end, setEnd] = useState<string>("0");
@@ -156,6 +157,22 @@ const Home = ({ initServerState }: { initServerState: ServerState }) => {
     });
   };
 
+  const addVideo = () => {
+    if (typeof playlistId !== "string") {
+      return;
+    }
+    videoApi
+      .addVideo({ playlist_id: playlistId, url: newVideoUrl })
+      .then((data) => {
+        if (data) {
+          setVideos(data);
+          toast.success("Add video successfully!");
+        } else {
+          toast.error("Add video failure");
+        }
+      });
+  };
+
   const startAction = (
     start: string,
     end: string,
@@ -208,15 +225,13 @@ const Home = ({ initServerState }: { initServerState: ServerState }) => {
     if (typeof playlistId !== "string") {
       return;
     }
-    playlistApi
-      .exportData(playlistId, start, end, type)
-      .then((data) => {
-        if (data) {
-          toast.success("Export data successfully!");
-        } else {
-          toast.error("Export data failure");
-        }
-      });
+    playlistApi.exportData(playlistId, start, end, type).then((data) => {
+      if (data) {
+        toast.success("Export data successfully!");
+      } else {
+        toast.error("Export data failure");
+      }
+    });
   };
 
   return (
@@ -253,6 +268,30 @@ const Home = ({ initServerState }: { initServerState: ServerState }) => {
               </div>
             </div>
             <div className="card-body mx-0 px-0">
+              <div className="col-12 row py-2">
+                <div className="col-2 px-3">New Video</div>
+                <div className="col-8">
+                  <input
+                    type="text"
+                    className="form-control form-control-sm"
+                    value={newVideoUrl}
+                    onChange={(event) => setNewVideoUrl(event.target.value)}
+                  />
+                </div>
+                <div className="col-2">
+                  <button
+                    type="submit"
+                    className="btn btn-success btn-sm"
+                    disabled={!newVideoUrl}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      addVideo();
+                    }}
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
               <div
                 className=" overflow-scroll px-3"
                 style={{ maxHeight: "80vh" }}

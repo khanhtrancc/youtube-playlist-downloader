@@ -5,12 +5,12 @@ import { ResponseFactory } from 'src/helpers/response';
 import { PlaylistService } from '../playlist/playlist.service';
 import * as fs from 'fs';
 import { FileHelper } from 'src/modules/common/file.helper';
+import { YoutubeApi } from 'src/helpers/youtube';
+import { config } from 'src/config';
 
-@Controller("/api/video")
+@Controller('/api/video')
 export class VideoController {
-  constructor(
-    private readonly videoService: VideoService,
-  ) {}
+  constructor(private readonly videoService: VideoService) {}
 
   @Get()
   get(@Req() req: Request) {
@@ -20,6 +20,31 @@ export class VideoController {
     }
     const videos = this.videoService.get({ playlist_id });
     return ResponseFactory.success(videos);
+  }
+
+  @Post('/add')
+  async add(@Req() req: Request) {
+    const { url, playlist_id } = req.body;
+    if (!url || typeof url !== 'string') {
+      return ResponseFactory.badRequest('Missing Video URL (url)');
+    }
+
+    const youtubeApi = new YoutubeApi(config.googleApiAccessToken);
+    const id = youtubeApi.getVideoId(url);
+
+    const existedVideos = this.videoService.get({ id, playlist_id });
+    if (existedVideos.length > 0) {
+      return ResponseFactory.badRequest('Video exists');
+    }
+    const video = await youtubeApi.getVideoFromUrl(id);
+    if (!video) {
+      return ResponseFactory.badRequest('Video not found!');
+    }
+    video.playlist_id = playlist_id;
+    this.videoService.add([video]);
+
+    const newList = this.videoService.get({ playlist_id });
+    return ResponseFactory.success(newList);
   }
 
   @Delete()
@@ -53,7 +78,7 @@ export class VideoController {
     }
     const existedVideos = this.videoService.get({ playlist_id });
     existedVideos.forEach((item) => {
-      const regex = RegExp(search)
+      const regex = RegExp(search);
       item.name = item.name.replace(regex, replace);
       this.videoService.updateDoc(item);
     });
@@ -61,6 +86,7 @@ export class VideoController {
     const newList = this.videoService.get({ playlist_id });
     return ResponseFactory.success(newList);
   }
-
-
+}
+function Add() {
+  throw new Error('Function not implemented.');
 }

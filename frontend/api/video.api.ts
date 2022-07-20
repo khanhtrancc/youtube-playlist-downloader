@@ -51,6 +51,11 @@ function stop({
   return handleResponse(axios.post(api, { playlist_id }));
 }
 
+function addVideo(data: { playlist_id: string; url: string }) {
+  const api = `${config.serverApi}/api/video/add`;
+  return handleResponse(axios.post(api, data));
+}
+
 export const videoApi = {
   getVideosOfPlaylist,
   removeVideo,
@@ -58,4 +63,5 @@ export const videoApi = {
   syncWithFile,
   start,
   stop,
+  addVideo,
 };

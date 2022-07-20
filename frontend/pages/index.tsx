@@ -56,9 +56,10 @@ const Home = ({ initServerState }: { initServerState: ServerState }) => {
                   <Link href={`/download?playlistId=${item.id}`} key={item.id}>
                     <div className="card mb-3" role="button">
                       <div className="row g-0">
-                        <div className="col-md-4">
+                        <div className="col-md-4 py-3 px-3">
                           <img
-                            src={item.thumbnail}
+                          width={'120px'}
+                            src={item.thumbnail || '/yt-logo.png'}
                             className="img-fluid rounded-start"
                             alt={item.name}
                           />

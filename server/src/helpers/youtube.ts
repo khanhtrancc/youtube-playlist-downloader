@@ -118,4 +118,68 @@ export class YoutubeApi {
     }
     return null;
   }
+
+  async getVideoFromUrl(id: string): Promise<Video> {
+    const api = 'https://www.googleapis.com/youtube/v3/videos';
+    const baseParams = {
+      part: 'snippet',
+      id,
+      key: this.accessToken,
+      maxResults: 1,
+    };
+    let videoData;
+    try {
+      const params = {
+        ...baseParams,
+      };
+      const response = await axios.get(api, { params });
+      if (response.status === 200) {
+        const data = response.data;
+        // console.log("Res",data);
+        if (data.items && data.items.length > 0) {
+          videoData = data.items[0];
+        } else {
+          console.log('No video items');
+        }
+      }
+    } catch (err) {
+      console.log('Get list error', err);
+    }
+    if (!videoData) {
+      return null;
+    }
+
+    const videoId = videoData.id;
+    const thumbnails = videoData.snippet.thumbnails;
+    let url;
+    try {
+      url = thumbnails.maxres ? thumbnails.maxres.url : thumbnails.default.url;
+    } catch (err) {}
+    const video: Video = {
+      name: videoData.snippet.title,
+      id: videoId,
+      playlist_id: '',
+      thumbnail: url,
+      video_file: {
+        status: 'none',
+        updated_at: Date.now(),
+        retry_count: 0,
+        description: '',
+      },
+      audio_file: {
+        status: 'none',
+        updated_at: Date.now(),
+        description: '',
+        retry_count: 0,
+      },
+    };
+    return video;
+  }
+
+  getVideoId(url: string): string | null {
+    var regExp =
+      /^.*((youtu.be\/)|(v\/)|(\/u\/\w\/)|(embed\/)|(watch\?))\??v?=?([^#&?]*).*/;
+    var match = url.match(regExp);
+    return match && match[7].length == 11 ? match[7] : null;
+  }
 }
