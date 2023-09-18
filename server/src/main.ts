@@ -11,7 +11,7 @@ async function bootstrap() {
     origin: '*',
   });
 
-  Logger.log("Config",config);
+  Logger.log('Config', config);
   // app.useGlobalFilters(new HttpExceptionFilter())
   await app.listen(config.port);
 }

@@ -13,4 +13,5 @@ export interface ServerState {
   progressRate: number;
   serverAddress: string | null;
   handlingPlaylistId: string | null;
+  saveDir: string;
 }

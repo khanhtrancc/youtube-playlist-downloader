@@ -15,6 +15,7 @@ export class StateService {
     progressRate: 0,
     serverAddress: null,
     handlingPlaylistId: null,
+    saveDir: config.saveDir,
   };
 
   constructor(

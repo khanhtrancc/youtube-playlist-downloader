@@ -17,7 +17,7 @@ function MyApp({
   // console.log("Page props", otherProps);
   if (!otherProps.serverState) {
     return (
-      <MainLayout serverIp={config.serverApi}>
+      <MainLayout serverIp={config.serverApi} saveDir={config.saveDir}>
         <ServerError />
       </MainLayout>
     );
@@ -25,6 +25,7 @@ function MyApp({
   const state: ServerState = otherProps.serverState;
   if (state) {
     config.serverApi = state.serverAddress;
+    config.saveDir = state.saveDir;
   }
 
   return <Component {...pageProps} initServerState={state} />;

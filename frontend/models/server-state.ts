@@ -1,10 +1,10 @@
 export type ServerActionType =
-  | 'downloading'
-  | 'converting'
-  | 'none'
-  | 'exporting'
-  | 'remove-file'
-  | 'sync-state';
+  | "downloading"
+  | "converting"
+  | "none"
+  | "exporting"
+  | "remove-file"
+  | "sync-state";
 
 export interface ServerState {
   currentAction: ServerActionType;
@@ -12,4 +12,5 @@ export interface ServerState {
   endIndex: number;
   serverAddress: string;
   handlingPlaylistId: string | null;
+  saveDir: string;
 }

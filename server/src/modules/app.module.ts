@@ -8,12 +8,13 @@ import { VideoModule } from './video/video.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { StateModule } from './state/state.module';
+import { config } from 'src/config';
 
 @Module({
   imports: [
     ServeStaticModule.forRoot({
-      rootPath: join(process.cwd(), `./public/`),
-      renderPath: '/public',
+      rootPath: join(config.saveDir),
+      renderPath: '/',
     }),
     PlaylistModule,
     VideoModule,

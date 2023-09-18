@@ -8,8 +8,10 @@ import { config } from "../config";
 export const MainLayout = ({
   children,
   serverIp,
+  saveDir,
 }: {
   serverIp: string;
+  saveDir: string;
   children: ReactElement;
 }) => {
   useEffect(() => {
@@ -48,7 +50,10 @@ export const MainLayout = ({
 
       <footer className="footer">
         <a target="_blank" rel="noopener noreferrer">
-          Powered by Youtube Download Bot. Server: {serverIp}
+          Powered by Youtube Download Bot. Server
+          <span style={{ color: "green", marginLeft: "8px" }}>{serverIp}</span>.
+          Save dir{" "}
+          <span style={{ color: "green", marginLeft: "8px" }}>{saveDir}</span>
         </a>
       </footer>
       <ToastContainer />

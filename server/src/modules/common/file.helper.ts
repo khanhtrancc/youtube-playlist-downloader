@@ -3,16 +3,17 @@ import * as fs from 'fs';
 import { Injectable } from '@nestjs/common';
 import * as rimraf from 'rimraf';
 import { join } from 'path';
-const archiver = require('archiver');
+import { config } from 'src/config';
+import archiver from 'archiver';
 
 @Injectable()
 export class FileHelper {
   getCwdPath() {
-    return process.cwd();
+    return config.saveDir;
   }
 
   getBasePathForPlaylist(playlist_id: string): string {
-    const baseOutputPath = path.join(process.cwd(), `./public/${playlist_id}`);
+    const baseOutputPath = path.join(config.saveDir, `./${playlist_id}`);
     return baseOutputPath;
   }
 
@@ -84,8 +85,8 @@ export class FileHelper {
     });
   }
 
-  getRelativeLinkForPublicPath(path: string){
-    const basePath = join(process.cwd(),'./public');
-    return path.replace(basePath,'');
+  getRelativeLinkForPublicPath(path: string) {
+    const basePath = join(config.saveDir);
+    return path.replace(basePath, '');
   }
 }

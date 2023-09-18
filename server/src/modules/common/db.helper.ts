@@ -5,7 +5,7 @@ const loki = require('lokijs');
 @Injectable()
 export class DbHelper {
   public db: any;
-  public isReady: boolean = false;
+  public isReady = false;
   private onReadyCallbacks: (() => any)[] = [];
 
   constructor() {

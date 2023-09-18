@@ -12,6 +12,7 @@ import { NetworkHelper } from '../common/network.helper';
 import { StateService } from '../state/state.service';
 import { numberUtils } from 'src/helpers/number';
 import { Playlist } from 'src/models/playlist';
+import path from 'path';
 
 @Controller('/api/playlist')
 export class PlaylistController {
@@ -62,6 +63,9 @@ export class PlaylistController {
 
     this.playlistService.addPlaylist(playlist);
     this.fileHelper.createPlaylistFolderIfNeed(playlist.id);
+    const folder = this.fileHelper.getBasePathForPlaylist(playlist.id);
+    const infoFile = path.join(folder, playlist.name + '.txt');
+    fs.writeFileSync(infoFile, `Name: ${playlist.name}\nId: ${playlist.id}`);
 
     const newList = this.playlistService.getPlaylists({ status: 'active' });
     return ResponseFactory.success(newList);
