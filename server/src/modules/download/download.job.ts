@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cron, Interval, Timeout } from '@nestjs/schedule';
 import { config } from 'src/config';
 import { Video } from 'src/models/video';
@@ -110,7 +110,7 @@ export class DownloadJob {
       item.video_file.updated_at = Date.now();
       this.videoService.updateDoc(item);
     }
-    console.log(
+    Logger.log(
       `Found ${videos.length} unfinished downloading videos. Reseting...`,
     );
     this.isReady = true;
