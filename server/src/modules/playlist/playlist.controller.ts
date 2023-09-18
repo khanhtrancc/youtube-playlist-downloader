@@ -12,7 +12,7 @@ import { NetworkHelper } from '../common/network.helper';
 import { StateService } from '../state/state.service';
 import { numberUtils } from 'src/helpers/number';
 import { Playlist } from 'src/models/playlist';
-import path from 'path';
+import * as path from 'path';
 
 @Controller('/api/playlist')
 export class PlaylistController {
